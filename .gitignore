@@ -1,0 +1,6 @@
+.venv
+.idea
+hydnn_helper.py
+list_empty_files.py
+node_modules
+files_to_send
