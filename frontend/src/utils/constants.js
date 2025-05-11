@@ -3,7 +3,7 @@
  */
 
 // API related constants
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
 export const API_TIMEOUT = 30000; // 30 seconds
 export const TOKEN_KEY = 'access_token';
 export const USER_KEY = 'user';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -7,8 +7,15 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/');
+    }
+  }, [isAuthenticated, navigate]);
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -33,16 +40,7 @@ const Login = () => {
       navigate('/');
     } catch (error) {
       console.error('Login failed:', error);
-
-      if (error.response && error.response.data) {
-        if (error.response.status === 401) {
-          setErrors({ general: 'Invalid email or password' });
-        } else {
-          setErrors({ general: error.response.data.detail || 'Login failed. Please try again.' });
-        }
-      } else {
-        setErrors({ general: 'Login failed. Please try again.' });
-      }
+      setErrors({ general: error.message || 'Login failed. Please try again.' });
     } finally {
       setLoading(false);
     }

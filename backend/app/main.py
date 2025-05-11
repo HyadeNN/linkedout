@@ -1,9 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 import uvicorn
 import logging
+from firebase_admin import firestore
 
 from app.config import settings
 from app.controller import api_router
@@ -71,6 +72,19 @@ def get_routes():
             "methods": getattr(route, "methods", None)
         })
     return {"routes": routes}
+
+router = APIRouter()
+
+@router.get('/test-firebase')
+def test_firebase():
+    try:
+        db = firestore.client()
+        collections = [c.id for c in db.collections()]
+        return {"success": True, "collections": collections}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+app.include_router(router)
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

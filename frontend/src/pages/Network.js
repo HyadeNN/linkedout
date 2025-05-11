@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { connectionService } from '../services';
+import { useAuth } from '../contexts/AuthContext';
 
 const Network = () => {
   const [connections, setConnections] = useState([]);
@@ -13,6 +14,7 @@ const Network = () => {
   const [connectionsCount, setConnectionsCount] = useState(0);
   const [requestsCount, setRequestsCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
+  const { user } = useAuth();
 
   // Fetch connections
   useEffect(() => {
@@ -210,10 +212,7 @@ const Network = () => {
             ) : (
               <div className="connections-list">
                 {connections.map(connection => {
-                  // Determine if the user is the sender or receiver
-                  const connectionUser = connection.sender_id === connection.user_id
-                    ? connection.receiver
-                    : connection.sender;
+                  const connectionUser = connection.user;
 
                   return (
                     <div key={connection.id} className="connection-card">
@@ -236,7 +235,7 @@ const Network = () => {
                           {connectionUser.profile?.headline || 'No headline'}
                         </p>
                         <p className="connection-date">
-                          Connected since {new Date(connection.updated_at).toLocaleDateString()}
+                          Connected since {new Date(connection.updatedAt).toLocaleDateString()}
                         </p>
                       </div>
 
@@ -292,7 +291,7 @@ const Network = () => {
                         {request.sender.profile?.headline || 'No headline'}
                       </p>
                       <p className="request-date">
-                        Sent {new Date(request.created_at).toLocaleDateString()}
+                        Sent {new Date(request.createdAt).toLocaleDateString()}
                       </p>
                     </div>
 

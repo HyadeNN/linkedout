@@ -1,116 +1,52 @@
-import api, { setAuthToken } from './api';
-import axios from 'axios';
+import { auth } from '../firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
 import { encodeFormData } from '../utils/formEncoder';
 import { debugLog } from '../utils/helpers';
+import api, { setAuthToken } from './api';
+import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
 
 // Register user
 export const register = async (userData) => {
-  debugLog("Sending registration request with data:", { ...userData, password: '[REDACTED]' });
-
+  const { email, password, first_name, last_name } = userData;
   try {
-    // Direct Axios request to bypass custom instance for troubleshooting
-    const response = await axios.post(`${API_URL}/auth/register`, userData, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: 60000
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    // Update user profile with first and last name
+    await updateProfile(userCredential.user, {
+      displayName: `${first_name} ${last_name}`
     });
-
-    debugLog("Registration successful:", response.data);
-    return response.data;
+    // Save user to local storage
+    localStorage.setItem('user', JSON.stringify({
+      email: userCredential.user.email,
+      displayName: userCredential.user.displayName,
+      uid: userCredential.user.uid
+    }));
+    return { user: userCredential.user };
   } catch (error) {
-    debugLog("Registration error:", error);
-
-    // Improved error handling with details
-    if (error.response) {
-      debugLog("Error response data:", error.response.data);
-      debugLog("Error response status:", error.response.status);
-      debugLog("Error response headers:", error.response.headers);
-    } else if (error.request) {
-      debugLog("Error request:", error.request);
-    } else {
-      debugLog("Error message:", error.message);
-    }
-
-    // Rethrow the error with more context
-    const enhancedError = new Error(error.response?.data?.detail || error.message);
-    enhancedError.response = error.response;
-    enhancedError.request = error.request;
-    throw enhancedError;
+    throw error;
   }
 };
 
 // Login user
 export const login = async (email, password) => {
-  debugLog("Attempting login for:", email);
-
   try {
-    // Format data for OAuth2
-    const formData = {
-      username: email,  // OAuth2 uses username field for email
-      password: password
-    };
-
-    // URL encode the form data
-    const encodedFormData = encodeFormData(formData);
-
-    debugLog("Encoded form data:", encodedFormData);
-
-    // Direct Axios request with URL encoded form data
-    const response = await axios.post(`${API_URL}/auth/login`, encodedFormData, {
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      timeout: 60000
-    });
-
-    debugLog("Login response:", response.data);
-
-    const { access_token, token_type } = response.data;
-
-    // Set token to Auth header
-    setAuthToken(access_token);
-
-    // Get current user info using our configured API instance
-    const userResponse = await api.get('/users/me');
-    const user = userResponse.data;
-
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
     // Save user to local storage
-    localStorage.setItem('user', JSON.stringify(user));
-
-    return { token: access_token, user };
+    localStorage.setItem('user', JSON.stringify({
+      email: userCredential.user.email,
+      displayName: userCredential.user.displayName,
+      uid: userCredential.user.uid
+    }));
+    return { user: userCredential.user };
   } catch (error) {
-    debugLog("Login error:", error);
-
-    // Improved error handling with details
-    if (error.response) {
-      debugLog("Error response data:", error.response.data);
-      debugLog("Error response status:", error.response.status);
-      debugLog("Error response headers:", error.response.headers);
-    } else if (error.request) {
-      debugLog("Error request:", error.request);
-    } else {
-      debugLog("Error message:", error.message);
-    }
-
-    // Rethrow the error with more context
-    const enhancedError = new Error(error.response?.data?.detail || error.message);
-    enhancedError.response = error.response;
-    enhancedError.request = error.request;
-    throw enhancedError;
+    throw error;
   }
 };
 
 // Logout user
-export const logout = () => {
-  debugLog("Logging out user");
-
-  // Remove token from Auth header
-  setAuthToken(null);
-
-  // Remove user from local storage
+export const logout = async () => {
+  await signOut(auth);
   localStorage.removeItem('user');
 };
 

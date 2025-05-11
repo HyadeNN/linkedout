@@ -1,5 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { authService } from '../services';
+import { auth } from '../firebase';
+import { onAuthStateChanged } from 'firebase/auth';
 
 // Create Auth Context
 const AuthContext = createContext();
@@ -9,39 +11,28 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is logged in on initial render
+  // Listen for auth state changes
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Get current user from local storage
-        const storedUser = authService.getCurrentUser();
-        const token = localStorage.getItem('access_token');
-
-        if (storedUser && token) {
-          // Verify the token is valid by fetching current user data
-          try {
-            // This would be an API call to validate the token
-            // const userData = await authService.validateToken();
-            // For now, just set the user from storage
-            setUser(storedUser);
-          } catch (validationError) {
-            // If token validation fails, log the user out
-            console.error('Token validation failed:', validationError);
-            handleLogout();
-          }
-        } else {
-          // No user or token in storage
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        handleLogout();
-      } finally {
-        setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // User is signed in
+        const userData = {
+          email: user.email,
+          displayName: user.displayName,
+          uid: user.uid
+        };
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+      } else {
+        // User is signed out
+        setUser(null);
+        localStorage.removeItem('user');
       }
-    };
+      setLoading(false);
+    });
 
-    checkAuth();
+    // Cleanup subscription
+    return () => unsubscribe();
   }, []);
 
   // Login function
@@ -78,15 +69,19 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Logout function
-  const handleLogout = () => {
-    console.log('Logging out user');
-    authService.logout();
-    setUser(null);
+  const handleLogout = async () => {
+    try {
+      console.log('Logging out user');
+      await authService.logout();
+      setUser(null);
+    } catch (error) {
+      console.error('Logout failed:', error);
+      throw error;
+    }
   };
 
   // Update user data
   const updateUser = (userData) => {
-    // Make sure to persist to local storage
     const updatedUser = { ...user, ...userData };
     localStorage.setItem('user', JSON.stringify(updatedUser));
     setUser(updatedUser);

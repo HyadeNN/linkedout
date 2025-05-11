@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
 
 const TestApi = () => {
   const [results, setResults] = useState([]);
@@ -34,7 +34,7 @@ const TestApi = () => {
     setError(null);
 
     try {
-      const response = await axios.get(`http://localhost:8000/`);
+      const response = await axios.get(`http://localhost:8001/`);
       setBackendInfo(response.data);
       addResult(`Root endpoint successful: ${JSON.stringify(response.data)}`);
     } catch (err) {
@@ -55,7 +55,7 @@ const TestApi = () => {
     setError(null);
 
     try {
-      const response = await axios.get(`http://localhost:8000/test-cors`);
+      const response = await axios.get(`http://localhost:8001/test-cors`);
       addResult(`CORS test successful: ${JSON.stringify(response.data)}`);
     } catch (err) {
       setError(err.message);
@@ -134,7 +134,7 @@ const TestApi = () => {
       ) : (
         <div className="backend-info">
           <h3>Backend Status: Not Connected</h3>
-          <p>Please ensure that the backend server is running at http://localhost:8000</p>
+          <p>Please ensure that the backend server is running at http://localhost:8001</p>
         </div>
       )}
 
