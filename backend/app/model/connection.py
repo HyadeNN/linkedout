@@ -15,6 +15,7 @@ class Connection(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Define relationships
     sender = relationship("User", foreign_keys=[sender_id], back_populates="sent_connections")
     receiver = relationship("User", foreign_keys=[receiver_id], back_populates="received_connections")
 
@@ -27,5 +28,6 @@ class Follow(Base):
     followed_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Define relationships
     follower = relationship("User", foreign_keys=[follower_id])
     followed = relationship("User", foreign_keys=[followed_id])

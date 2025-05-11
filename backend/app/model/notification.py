@@ -18,6 +18,6 @@ class Notification(Base):
     created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Specify which foreign_keys to use for each relationship
+    # Define relationships
     user = relationship("User", foreign_keys=[user_id], back_populates="notifications")
     creator = relationship("User", foreign_keys=[created_by])

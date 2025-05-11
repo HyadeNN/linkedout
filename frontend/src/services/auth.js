@@ -1,15 +1,16 @@
 import api, { setAuthToken } from './api';
 import axios from 'axios';
 import { encodeFormData } from '../utils/formEncoder';
+import { debugLog } from '../utils/helpers';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 // Register user
 export const register = async (userData) => {
-  console.log("Sending registration request with data:", userData);
+  debugLog("Sending registration request with data:", userData);
 
   try {
-    // Test direct Axios request to bypass our custom instance
+    // Direct Axios request to bypass custom instance for troubleshooting
     const response = await axios.post(`${API_URL}/auth/register`, userData, {
       headers: {
         'Content-Type': 'application/json',
@@ -17,17 +18,29 @@ export const register = async (userData) => {
       timeout: 60000
     });
 
-    console.log("Registration successful:", response.data);
+    debugLog("Registration successful:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Registration error:", error);
+    debugLog("Registration error:", error);
+
+    // Improved error handling with details
+    if (error.response) {
+      debugLog("Error response data:", error.response.data);
+      debugLog("Error response status:", error.response.status);
+      debugLog("Error response headers:", error.response.headers);
+    } else if (error.request) {
+      debugLog("Error request:", error.request);
+    } else {
+      debugLog("Error message:", error.message);
+    }
+
     throw error;
   }
 };
 
 // Login user
 export const login = async (email, password) => {
-  console.log("Attempting login for:", email);
+  debugLog("Attempting login for:", email);
 
   try {
     // Format data for OAuth2
@@ -39,7 +52,9 @@ export const login = async (email, password) => {
     // URL encode the form data
     const encodedFormData = encodeFormData(formData);
 
-    // Test direct Axios request with URL encoded form data
+    debugLog("Encoded form data:", encodedFormData);
+
+    // Direct Axios request with URL encoded form data
     const response = await axios.post(`${API_URL}/auth/login`, encodedFormData, {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -47,7 +62,7 @@ export const login = async (email, password) => {
       timeout: 60000
     });
 
-    console.log("Login response:", response.data);
+    debugLog("Login response:", response.data);
 
     const { access_token, token_type } = response.data;
 
@@ -63,13 +78,27 @@ export const login = async (email, password) => {
 
     return { token: access_token, user };
   } catch (error) {
-    console.error("Login error:", error);
+    debugLog("Login error:", error);
+
+    // Improved error handling with details
+    if (error.response) {
+      debugLog("Error response data:", error.response.data);
+      debugLog("Error response status:", error.response.status);
+      debugLog("Error response headers:", error.response.headers);
+    } else if (error.request) {
+      debugLog("Error request:", error.request);
+    } else {
+      debugLog("Error message:", error.message);
+    }
+
     throw error;
   }
 };
 
 // Logout user
 export const logout = () => {
+  debugLog("Logging out user");
+
   // Remove token from Auth header
   setAuthToken(null);
 
@@ -80,10 +109,12 @@ export const logout = () => {
 // Verify email
 export const verifyEmail = async (token) => {
   try {
+    debugLog("Verifying email with token:", token.slice(0, 10) + "...");
     const response = await axios.post(`${API_URL}/auth/verify-email`, { token });
+    debugLog("Email verification response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Email verification error:", error);
+    debugLog("Email verification error:", error);
     throw error;
   }
 };
@@ -91,10 +122,12 @@ export const verifyEmail = async (token) => {
 // Request password reset
 export const requestPasswordReset = async (email) => {
   try {
+    debugLog("Requesting password reset for:", email);
     const response = await axios.post(`${API_URL}/auth/password-reset`, { email });
+    debugLog("Password reset request response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Password reset request error:", error);
+    debugLog("Password reset request error:", error);
     throw error;
   }
 };
@@ -102,14 +135,16 @@ export const requestPasswordReset = async (email) => {
 // Reset password
 export const resetPassword = async (token, password, confirm_password) => {
   try {
+    debugLog("Resetting password with token:", token.slice(0, 10) + "...");
     const response = await axios.post(`${API_URL}/auth/password-reset/confirm`, {
       token,
       password,
       confirm_password,
     });
+    debugLog("Password reset response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Password reset error:", error);
+    debugLog("Password reset error:", error);
     throw error;
   }
 };

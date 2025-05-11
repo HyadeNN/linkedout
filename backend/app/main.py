@@ -11,6 +11,9 @@ from app.config import settings
 from app.database import engine, Base, get_db
 from app.controller import api_router
 
+from app.utils.seed_db import seed_database
+from app.database import SessionLocal
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -23,15 +26,13 @@ app = FastAPI(
     version=settings.PROJECT_VERSION
 )
 
-# CORS Configuration - with debug logging
-logger.info("Setting up CORS middleware with origins: %s", settings.CORS_ORIGINS)
-
+# CORS Configuration with more permissive settings for development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins temporarily for testing
+    allow_origins=["*"],  # Allow all origins in development
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
     expose_headers=["Content-Type", "X-Content-Type-Options", "X-Frame-Options"]
 )
 
@@ -62,7 +63,8 @@ def root():
         "message": "Welcome to LinkedOut API",
         "version": settings.PROJECT_VERSION,
         "docs_url": "/docs",
-        "redoc_url": "/redoc"
+        "redoc_url": "/redoc",
+        "status": "running"
     }
 
 # Health check endpoint
@@ -70,6 +72,35 @@ def root():
 def health_check():
     logger.info("Health check endpoint called")
     return {"status": "healthy"}
+
+# Debug endpoint to see all routes
+@app.get("/debug/routes")
+def get_routes():
+    routes = []
+    for route in app.routes:
+        routes.append({
+            "path": route.path,
+            "name": route.name,
+            "methods": getattr(route, "methods", None)
+        })
+    return {"routes": routes}
+
+
+# Create tables and seed database on startup
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Creating database tables...")
+    Base.metadata.create_all(bind=engine)
+    logger.info("Database tables created successfully")
+
+    # Seed database with initial data
+    db = SessionLocal()
+    try:
+        seed_database(db)
+    except Exception as e:
+        logger.error(f"Error during database seeding: {str(e)}")
+    finally:
+        db.close()
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)

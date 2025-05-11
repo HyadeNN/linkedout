@@ -8,17 +8,65 @@ const TestApi = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [testData, setTestData] = useState('');
+  const [backendInfo, setBackendInfo] = useState(null);
 
-  const addResult = (message, success = true) => {
+  const addResult = (message, success = true, details = null) => {
     setResults(prev => [
       ...prev,
       {
         id: Date.now(),
         message,
         success,
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString(),
+        details: details
       }
     ]);
+  };
+
+  // Get backend info on component mount
+  useEffect(() => {
+    testRoot();
+  }, []);
+
+  // Test root endpoint
+  const testRoot = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.get(`http://localhost:8000/`);
+      setBackendInfo(response.data);
+      addResult(`Root endpoint successful: ${JSON.stringify(response.data)}`);
+    } catch (err) {
+      setError(err.message);
+      addResult(`Root endpoint failed: ${err.message}`, false, {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Test CORS
+  const testCors = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.get(`http://localhost:8000/test-cors`);
+      addResult(`CORS test successful: ${JSON.stringify(response.data)}`);
+    } catch (err) {
+      setError(err.message);
+      addResult(`CORS test failed: ${err.message}`, false, {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Test GET request
@@ -31,7 +79,11 @@ const TestApi = () => {
       addResult(`GET successful: ${JSON.stringify(response.data)}`);
     } catch (err) {
       setError(err.message);
-      addResult(`GET failed: ${err.message}`, false);
+      addResult(`GET failed: ${err.message}`, false, {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data
+      });
     } finally {
       setLoading(false);
     }
@@ -55,47 +107,36 @@ const TestApi = () => {
       addResult(`POST successful: ${JSON.stringify(response.data)}`);
     } catch (err) {
       setError(err.message);
-      addResult(`POST failed: ${err.message}`, false);
+      addResult(`POST failed: ${err.message}`, false, {
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        data: err.response?.data
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Test root endpoint
-  const testRoot = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await axios.get(`http://localhost:8000/`);
-      addResult(`Root endpoint successful: ${JSON.stringify(response.data)}`);
-    } catch (err) {
-      setError(err.message);
-      addResult(`Root endpoint failed: ${err.message}`, false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Test CORS
-  const testCors = async () => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const response = await axios.get(`http://localhost:8000/test-cors`);
-      addResult(`CORS test successful: ${JSON.stringify(response.data)}`);
-    } catch (err) {
-      setError(err.message);
-      addResult(`CORS test failed: ${err.message}`, false);
-    } finally {
-      setLoading(false);
-    }
+  // Clear Results
+  const clearResults = () => {
+    setResults([]);
   };
 
   return (
     <div className="test-api-page">
       <h1>API Connection Test</h1>
+
+      {backendInfo ? (
+        <div className="backend-info">
+          <h3>Backend Info:</h3>
+          <pre>{JSON.stringify(backendInfo, null, 2)}</pre>
+        </div>
+      ) : (
+        <div className="backend-info">
+          <h3>Backend Status: Not Connected</h3>
+          <p>Please ensure that the backend server is running at http://localhost:8000</p>
+        </div>
+      )}
 
       <div className="test-controls">
         <button
@@ -147,7 +188,16 @@ const TestApi = () => {
       )}
 
       <div className="results-container">
-        <h2>Test Results</h2>
+        <div className="results-header">
+          <h2>Test Results</h2>
+          <button
+            onClick={clearResults}
+            className="clear-button"
+            disabled={results.length === 0}
+          >
+            Clear Results
+          </button>
+        </div>
 
         {results.length === 0 ? (
           <p>No tests run yet</p>
@@ -160,6 +210,11 @@ const TestApi = () => {
               >
                 <span className="result-timestamp">[{result.timestamp}]</span>
                 <span className="result-message">{result.message}</span>
+                {result.details && (
+                  <div className="result-details">
+                    <pre>{JSON.stringify(result.details, null, 2)}</pre>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -171,6 +226,20 @@ const TestApi = () => {
           max-width: 800px;
           margin: 0 auto;
           padding: 20px;
+        }
+        
+        .backend-info {
+          margin-bottom: 20px;
+          padding: 15px;
+          background-color: #f5f5f5;
+          border-radius: 4px;
+        }
+        
+        pre {
+          background-color: #f0f0f0;
+          padding: 10px;
+          border-radius: 4px;
+          overflow-x: auto;
         }
         
         .test-controls {
@@ -214,6 +283,32 @@ const TestApi = () => {
           margin-bottom: 20px;
         }
         
+        .results-container {
+          background-color: #f9f9f9;
+          padding: 15px;
+          border-radius: 4px;
+        }
+        
+        .results-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+        }
+        
+        .clear-button {
+          padding: 5px 10px;
+          background-color: #f44336;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        
+        .clear-button:disabled {
+          background-color: #cccccc;
+        }
+        
         .results-list {
           list-style: none;
           padding: 0;
@@ -239,6 +334,11 @@ const TestApi = () => {
           display: inline-block;
           margin-right: 10px;
           font-weight: bold;
+        }
+        
+        .result-details {
+          margin-top: 10px;
+          font-size: 0.9em;
         }
       `}</style>
     </div>

@@ -4,7 +4,7 @@ from app.controller.auth import router as auth_router
 from app.controller.user import router as user_router
 from app.controller.profile import router as profile_router
 from app.controller.test import router as test_router
-# Temporarily comment out other controllers
+# Temporarily comment out other controllers for initial testing
 # from app.controller.connection import router as connection_router
 # from app.controller.post import router as post_router
 # from app.controller.notification import router as notification_router

@@ -20,16 +20,32 @@ class User(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     role = Column(String(20), default="user")  # user, employer, admin
 
-    # Simplify relationships to avoid circular dependencies
-    # Comment out complex relationships for now
+    # Define relationships
     profile = relationship("Profile", back_populates="user", uselist=False)
-    # posts = relationship("Post", back_populates="author")
-    # comments = relationship("Comment", back_populates="author")
-    # sent_connections = relationship("Connection",
-    #                                 foreign_keys="Connection.sender_id",
-    #                                 back_populates="sender")
-    # received_connections = relationship("Connection",
-    #                                     foreign_keys="Connection.receiver_id",
-    #                                     back_populates="receiver")
-    # job_posts = relationship("Job", back_populates="poster")
-    # job_applications = relationship("JobApplication", back_populates="applicant")
+    posts = relationship("Post", back_populates="author")
+    comments = relationship("Comment", back_populates="author")
+
+    # Connection relationships
+    sent_connections = relationship(
+        "Connection",
+        foreign_keys="Connection.sender_id",
+        back_populates="sender",
+        cascade="all, delete-orphan"
+    )
+    received_connections = relationship(
+        "Connection",
+        foreign_keys="Connection.receiver_id",
+        back_populates="receiver",
+        cascade="all, delete-orphan"
+    )
+
+    # Notification relationships
+    notifications = relationship(
+        "Notification",
+        foreign_keys="Notification.user_id",
+        back_populates="user"
+    )
+
+    # Job relationships
+    job_posts = relationship("Job", back_populates="poster")
+    job_applications = relationship("JobApplication", back_populates="applicant")

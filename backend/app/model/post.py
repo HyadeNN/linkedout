@@ -15,9 +15,10 @@ class Post(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Define relationships
     author = relationship("User", back_populates="posts")
-    comments = relationship("Comment", back_populates="post")
-    likes = relationship("Like", back_populates="post")
+    comments = relationship("Comment", back_populates="post", cascade="all, delete-orphan")
+    likes = relationship("Like", back_populates="post", cascade="all, delete-orphan")
 
 
 class Comment(Base):
@@ -30,9 +31,10 @@ class Comment(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Define relationships
     post = relationship("Post", back_populates="comments")
     author = relationship("User", back_populates="comments")
-    likes = relationship("CommentLike", back_populates="comment")
+    likes = relationship("CommentLike", back_populates="comment", cascade="all, delete-orphan")
 
 
 class Like(Base):
@@ -43,6 +45,7 @@ class Like(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Define relationships
     post = relationship("Post", back_populates="likes")
     user = relationship("User")
 
@@ -55,5 +58,6 @@ class CommentLike(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Define relationships
     comment = relationship("Comment", back_populates="likes")
     user = relationship("User")

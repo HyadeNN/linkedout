@@ -24,9 +24,10 @@ class Job(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Define relationships
     poster = relationship("User", back_populates="job_posts")
-    applications = relationship("JobApplication", back_populates="job")
-    saved_jobs = relationship("SavedJob", back_populates="job")
+    applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan")
+    saved_jobs = relationship("SavedJob", back_populates="job", cascade="all, delete-orphan")
 
 
 class JobApplication(Base):
@@ -40,6 +41,7 @@ class JobApplication(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Define relationships
     job = relationship("Job", back_populates="applications")
     applicant = relationship("User", back_populates="job_applications")
 
@@ -52,5 +54,6 @@ class SavedJob(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Define relationships
     job = relationship("Job", back_populates="saved_jobs")
     user = relationship("User")
