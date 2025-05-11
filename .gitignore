@@ -4,3 +4,4 @@ hydnn_helper.py
 list_empty_files.py
 node_modules
 files_to_send
+list_of_projectfiles_paths.txt
