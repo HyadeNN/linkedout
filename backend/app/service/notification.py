@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
+from firebase_admin import firestore
 
 from app.model.notification import Notification
 from app.schema.notification import NotificationUpdate
@@ -51,17 +52,26 @@ def mark_notification_as_read(db: Session, notification_id: int, user_id: int) -
     return db_notification
 
 
-def mark_all_notifications_as_read(db: Session, user_id: int) -> int:
+def mark_all_notifications_as_read(db: firestore.Client, user_id: str) -> int:
     """Mark all notifications for a user as read."""
-    # Update all unread notifications
-    result = db.query(Notification).filter(
-        (Notification.user_id == user_id) &
-        (Notification.is_read == False)
-    ).update({"is_read": True})
-
-    db.commit()
-
-    return result
+    notifications_ref = db.collection('notifications')
+    query = notifications_ref.where('user_id', '==', user_id).where('is_read', '==', False)
+    
+    # Get all unread notifications
+    docs = query.get()
+    count = 0
+    
+    # Update each notification
+    batch = db.batch()
+    for doc in docs:
+        batch.update(doc.reference, {'is_read': True})
+        count += 1
+    
+    # Commit the batch
+    if count > 0:
+        batch.commit()
+    
+    return count
 
 
 def delete_notification(db: Session, notification_id: int, user_id: int) -> bool:
@@ -78,11 +88,23 @@ def delete_notification(db: Session, notification_id: int, user_id: int) -> bool
     return True
 
 
-def delete_all_notifications(db: Session, user_id: int) -> int:
+def delete_all_notifications(db: firestore.Client, user_id: str) -> int:
     """Delete all notifications for a user."""
-    # Delete all notifications
-    result = db.query(Notification).filter(Notification.user_id == user_id).delete()
-
-    db.commit()
-
-    return result
+    notifications_ref = db.collection('notifications')
+    query = notifications_ref.where('user_id', '==', user_id)
+    
+    # Get all notifications
+    docs = query.get()
+    count = 0
+    
+    # Delete each notification
+    batch = db.batch()
+    for doc in docs:
+        batch.delete(doc.reference)
+        count += 1
+    
+    # Commit the batch
+    if count > 0:
+        batch.commit()
+    
+    return count

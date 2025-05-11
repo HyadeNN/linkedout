@@ -1,5 +1,7 @@
 # Import all models in proper order to avoid circular dependencies
 
+from app.database import Base
+
 # Core user model
 from app.model.user import User
 

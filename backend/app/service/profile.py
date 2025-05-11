@@ -2,6 +2,7 @@ from typing import List, Optional
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
+from firebase_admin import firestore
 
 from app.model.profile import Profile, Experience, Education, Skill, Endorsement
 from app.model.user import User
@@ -14,12 +15,16 @@ from app.schema.profile import (
 from app.utils.helpers import save_image_with_resize, delete_file
 
 
-def get_profile(db: Session, profile_id: int) -> Profile:
-    """Get a profile by ID."""
-    profile = db.query(Profile).filter(Profile.id == profile_id).first()
-    if not profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
-    return profile
+def get_profile(db: firestore.Client, user_id: str) -> Optional[Profile]:
+    """Get a user's profile."""
+    profiles_ref = db.collection('profiles')
+    query = profiles_ref.where('user_id', '==', user_id)
+    docs = query.get()
+    
+    if not docs:
+        return None
+    
+    return Profile.from_dict(docs[0].to_dict())
 
 
 def get_profile_by_user_id(db: Session, user_id: int) -> Optional[Profile]:
@@ -27,39 +32,46 @@ def get_profile_by_user_id(db: Session, user_id: int) -> Optional[Profile]:
     return db.query(Profile).filter(Profile.user_id == user_id).first()
 
 
-def create_profile(db: Session, user_id: int, profile_data: ProfileCreate) -> Profile:
-    """Create a new profile for a user."""
-    # Check if profile already exists
-    existing_profile = get_profile_by_user_id(db, user_id)
-    if existing_profile:
-        raise HTTPException(status_code=400, detail="Profile already exists for this user")
-
-    # Create new profile
-    db_profile = Profile(
-        user_id=user_id,
-        **profile_data.dict()
-    )
-
-    db.add(db_profile)
-    db.commit()
-    db.refresh(db_profile)
-
-    return db_profile
+def create_profile(db: firestore.Client, profile: Profile) -> Profile:
+    """Create a new profile."""
+    profiles_ref = db.collection('profiles')
+    doc_ref = profiles_ref.add(profile.to_dict())[1]
+    
+    # Get the created document
+    doc = doc_ref.get()
+    return Profile.from_dict(doc.to_dict())
 
 
-def update_profile(db: Session, user_id: int, profile_data: ProfileUpdate) -> Profile:
+def update_profile(db: firestore.Client, user_id: str, profile_data: dict) -> Optional[Profile]:
     """Update a user's profile."""
-    db_profile = get_profile_by_user_id(db, user_id)
-    if not db_profile:
-        raise HTTPException(status_code=404, detail="Profile not found")
+    profiles_ref = db.collection('profiles')
+    query = profiles_ref.where('user_id', '==', user_id)
+    docs = query.get()
+    
+    if not docs:
+        return None
+    
+    # Update the profile
+    doc_ref = docs[0].reference
+    doc_ref.update(profile_data)
+    
+    # Get the updated document
+    doc = doc_ref.get()
+    return Profile.from_dict(doc.to_dict())
 
-    # Update profile fields
-    for field, value in profile_data.dict(exclude_unset=True).items():
-        setattr(db_profile, field, value)
 
-    db.commit()
-    db.refresh(db_profile)
-    return db_profile
+def delete_profile(db: firestore.Client, user_id: str) -> bool:
+    """Delete a user's profile."""
+    profiles_ref = db.collection('profiles')
+    query = profiles_ref.where('user_id', '==', user_id)
+    docs = query.get()
+    
+    if not docs:
+        return False
+    
+    # Delete the profile
+    docs[0].reference.delete()
+    return True
 
 
 def upload_profile_image(db: Session, user_id: int, file: UploadFile) -> Profile:
@@ -169,90 +181,124 @@ def delete_experience(db: Session, experience_id: int) -> bool:
 
 
 # Education functions
-def get_education(db: Session, education_id: int) -> Education:
-    """Get an education by ID."""
-    education = db.query(Education).filter(Education.id == education_id).first()
-    if not education:
-        raise HTTPException(status_code=404, detail="Education not found")
-    return education
+def get_education(db: firestore.Client, education_id: str) -> Optional[Education]:
+    """Get an education entry by ID."""
+    education_ref = db.collection('education')
+    doc = education_ref.document(education_id).get()
+    
+    if not doc.exists:
+        return None
+    
+    return Education.from_dict(doc.to_dict())
 
 
-def create_education(db: Session, profile_id: int, education_data: EducationCreate) -> Education:
-    """Create a new education for a profile."""
-    db_education = Education(
-        profile_id=profile_id,
-        **education_data.dict()
-    )
-
-    db.add(db_education)
-    db.commit()
-    db.refresh(db_education)
-
-    return db_education
+def get_educations(db: firestore.Client, user_id: str) -> List[Education]:
+    """Get all education entries for a user."""
+    education_ref = db.collection('education')
+    query = education_ref.where('user_id', '==', user_id).order_by('start_date', direction=firestore.Query.DESCENDING)
+    docs = query.get()
+    return [Education.from_dict(doc.to_dict()) for doc in docs]
 
 
-def update_education(db: Session, education_id: int, education_data: EducationUpdate) -> Education:
-    """Update an education."""
-    db_education = get_education(db, education_id)
-
-    # Update education fields
-    for field, value in education_data.dict(exclude_unset=True).items():
-        setattr(db_education, field, value)
-
-    db.commit()
-    db.refresh(db_education)
-    return db_education
+def create_education(db: firestore.Client, education: Education) -> Education:
+    """Create a new education entry."""
+    education_ref = db.collection('education')
+    doc_ref = education_ref.add(education.to_dict())[1]
+    
+    # Get the created document
+    doc = doc_ref.get()
+    return Education.from_dict(doc.to_dict())
 
 
-def delete_education(db: Session, education_id: int) -> bool:
-    """Delete an education."""
-    db_education = get_education(db, education_id)
+def update_education(db: firestore.Client, education_id: str, education_data: dict) -> Optional[Education]:
+    """Update an education entry."""
+    education_ref = db.collection('education')
+    doc_ref = education_ref.document(education_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return None
+    
+    # Update the education entry
+    doc_ref.update(education_data)
+    
+    # Get the updated document
+    doc = doc_ref.get()
+    return Education.from_dict(doc.to_dict())
 
-    db.delete(db_education)
-    db.commit()
 
+def delete_education(db: firestore.Client, education_id: str) -> bool:
+    """Delete an education entry."""
+    education_ref = db.collection('education')
+    doc_ref = education_ref.document(education_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return False
+    
+    # Delete the education entry
+    doc_ref.delete()
     return True
 
 
 # Skill functions
-def get_skill(db: Session, skill_id: int) -> Skill:
+def get_skill(db: firestore.Client, skill_id: str) -> Optional[Skill]:
     """Get a skill by ID."""
-    skill = db.query(Skill).filter(Skill.id == skill_id).first()
-    if not skill:
-        raise HTTPException(status_code=404, detail="Skill not found")
-    return skill
+    skills_ref = db.collection('skills')
+    doc = skills_ref.document(skill_id).get()
+    
+    if not doc.exists:
+        return None
+    
+    return Skill.from_dict(doc.to_dict())
 
 
-def create_skill(db: Session, profile_id: int, skill_data: SkillCreate) -> Skill:
-    """Create a new skill for a profile."""
-    # Check if skill already exists for this profile
-    existing_skill = db.query(Skill).filter(
-        Skill.profile_id == profile_id,
-        func.lower(Skill.name) == func.lower(skill_data.name)
-    ).first()
-
-    if existing_skill:
-        raise HTTPException(status_code=400, detail="Skill already exists for this profile")
-
-    db_skill = Skill(
-        profile_id=profile_id,
-        name=skill_data.name
-    )
-
-    db.add(db_skill)
-    db.commit()
-    db.refresh(db_skill)
-
-    return db_skill
+def get_skills(db: firestore.Client, user_id: str) -> List[Skill]:
+    """Get all skills for a user."""
+    skills_ref = db.collection('skills')
+    query = skills_ref.where('user_id', '==', user_id)
+    docs = query.get()
+    return [Skill.from_dict(doc.to_dict()) for doc in docs]
 
 
-def delete_skill(db: Session, skill_id: int) -> bool:
+def create_skill(db: firestore.Client, skill: Skill) -> Skill:
+    """Create a new skill."""
+    skills_ref = db.collection('skills')
+    doc_ref = skills_ref.add(skill.to_dict())[1]
+    
+    # Get the created document
+    doc = doc_ref.get()
+    return Skill.from_dict(doc.to_dict())
+
+
+def update_skill(db: firestore.Client, skill_id: str, skill_data: dict) -> Optional[Skill]:
+    """Update a skill."""
+    skills_ref = db.collection('skills')
+    doc_ref = skills_ref.document(skill_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return None
+    
+    # Update the skill
+    doc_ref.update(skill_data)
+    
+    # Get the updated document
+    doc = doc_ref.get()
+    return Skill.from_dict(doc.to_dict())
+
+
+def delete_skill(db: firestore.Client, skill_id: str) -> bool:
     """Delete a skill."""
-    db_skill = get_skill(db, skill_id)
-
-    db.delete(db_skill)
-    db.commit()
-
+    skills_ref = db.collection('skills')
+    doc_ref = skills_ref.document(skill_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return False
+    
+    # Delete the skill
+    doc_ref.delete()
     return True
 
 
@@ -343,3 +389,85 @@ def get_profile_strength(db: Session, profile_id: int) -> int:
     # Calculate percentage
     strength_percentage = int(total_points)
     return min(strength_percentage, 100)  # Cap at 100%
+
+
+def search_profiles(
+    db: firestore.Client,
+    query: Optional[str] = None,
+    skills: Optional[List[str]] = None,
+    location: Optional[str] = None,
+    skip: int = 0,
+    limit: int = 100
+) -> List[Profile]:
+    """Search for profiles with various filters."""
+    profiles_ref = db.collection('profiles')
+    query = profiles_ref
+    
+    # Apply filters
+    if location:
+        query = query.where('location', '==', location)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    profiles = [Profile.from_dict(doc.to_dict()) for doc in docs]
+    
+    # Apply search filter if provided
+    if query:
+        search_query = query.lower()
+        profiles = [
+            profile for profile in profiles
+            if search_query in profile.headline.lower() or
+               search_query in profile.summary.lower() or
+               search_query in profile.current_position.lower()
+        ]
+    
+    # Apply skills filter if provided
+    if skills:
+        profiles = [
+            profile for profile in profiles
+            if any(skill.lower() in [s.name.lower() for s in profile.skills] for skill in skills)
+        ]
+    
+    return profiles
+
+
+def count_search_profiles(
+    db: firestore.Client,
+    query: Optional[str] = None,
+    skills: Optional[List[str]] = None,
+    location: Optional[str] = None
+) -> int:
+    """Count the number of profiles matching the search criteria."""
+    profiles_ref = db.collection('profiles')
+    query = profiles_ref
+    
+    # Apply filters
+    if location:
+        query = query.where('location', '==', location)
+    
+    docs = query.get()
+    profiles = [Profile.from_dict(doc.to_dict()) for doc in docs]
+    
+    # Apply search filter if provided
+    if query:
+        search_query = query.lower()
+        profiles = [
+            profile for profile in profiles
+            if search_query in profile.headline.lower() or
+               search_query in profile.summary.lower() or
+               search_query in profile.current_position.lower()
+        ]
+    
+    # Apply skills filter if provided
+    if skills:
+        profiles = [
+            profile for profile in profiles
+            if any(skill.lower() in [s.name.lower() for s in profile.skills] for skill in skills)
+        ]
+    
+    return len(profiles)

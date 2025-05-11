@@ -1,23 +1,52 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Text, Boolean
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from datetime import datetime
+from typing import Optional, Dict, Any
 
-from app.database import Base
+class Notification:
+    """Notification model for Firestore."""
+    def __init__(
+        self,
+        user_id: str,
+        type: str,
+        message: str,
+        is_read: bool = False,
+        source_id: Optional[str] = None,
+        source_type: Optional[str] = None,
+        created_by: Optional[str] = None,
+        created_at: Optional[datetime] = None,
+        notification_id: Optional[str] = None
+    ):
+        self.notification_id = notification_id
+        self.user_id = user_id
+        self.type = type
+        self.message = message
+        self.is_read = is_read
+        self.source_id = source_id
+        self.source_type = source_type
+        self.created_by = created_by
+        self.created_at = created_at or datetime.utcnow()
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "user_id": self.user_id,
+            "type": self.type,
+            "message": self.message,
+            "is_read": self.is_read,
+            "source_id": self.source_id,
+            "source_type": self.source_type,
+            "created_by": self.created_by,
+            "created_at": self.created_at
+        }
 
-class Notification(Base):
-    __tablename__ = "notifications"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    type = Column(String(50), nullable=False)  # connection_request, post_like, comment, etc.
-    message = Column(Text, nullable=False)
-    is_read = Column(Boolean, default=False)
-    source_id = Column(Integer, nullable=True)  # ID of related entity (post_id, connection_id, etc.)
-    source_type = Column(String(50), nullable=True)  # Type of the related entity (post, connection, etc.)
-    created_by = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Define relationships
-    user = relationship("User", foreign_keys=[user_id], back_populates="notifications")
-    creator = relationship("User", foreign_keys=[created_by])
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], notification_id: Optional[str] = None) -> 'Notification':
+        return cls(
+            user_id=data["user_id"],
+            type=data["type"],
+            message=data["message"],
+            is_read=data.get("is_read", False),
+            source_id=data.get("source_id"),
+            source_type=data.get("source_type"),
+            created_by=data.get("created_by"),
+            created_at=data.get("created_at"),
+            notification_id=notification_id
+        )

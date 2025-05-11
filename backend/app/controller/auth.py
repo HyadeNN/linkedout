@@ -6,7 +6,7 @@ import logging
 from app.database import get_db
 from app.service import auth as auth_service
 from app.schema.user import (
-    UserCreate, UserResponse, Token, UserLogin,
+    UserCreate, UserResponse, Token, UserLogin, FirebaseLogin,
     PasswordReset, PasswordResetConfirm, VerifyEmail
 )
 
@@ -38,6 +38,17 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     # Pass the UserLogin instance to the service
     result = auth_service.login_user(db, user_login)
 
+    return {
+        "access_token": result["access_token"],
+        "token_type": result["token_type"]
+    }
+
+
+@router.post("/login/firebase", response_model=Token)
+def login_with_firebase(login_data: FirebaseLogin, db: Session = Depends(get_db)):
+    """Login with Firebase token and get access token."""
+    logger.debug("Firebase login attempt received")
+    result = auth_service.login_with_firebase(db, login_data)
     return {
         "access_token": result["access_token"],
         "token_type": result["token_type"]

@@ -1,6 +1,7 @@
 from typing import List, Optional
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from firebase_admin import firestore
 
 from app.model.user import User
 from app.schema.user import UserUpdate
@@ -15,9 +16,17 @@ def get_user(db: Session, user_id: int) -> User:
     return user
 
 
-def get_user_by_email(db: Session, email: str) -> Optional[User]:
+def get_user_by_email(db: firestore.Client, email: str) -> Optional[User]:
     """Get a user by email."""
-    return db.query(User).filter(User.email == email).first()
+    users_ref = db.collection('users')
+    query = users_ref.where('email', '==', email).limit(1)
+    docs = query.get()
+    
+    if not docs:
+        return None
+    
+    doc = docs[0]
+    return User.from_dict(doc.to_dict(), doc.id)
 
 
 def get_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
@@ -66,23 +75,44 @@ def deactivate_user(db: Session, user_id: int) -> bool:
     return True
 
 
-def search_users(db: Session, query: str, skip: int = 0, limit: int = 20) -> List[User]:
+def search_users(db: firestore.Client, query: str, skip: int = 0, limit: int = 20) -> List[User]:
     """Search for users by name or email."""
-    search_term = f"%{query}%"
+    users_ref = db.collection('users')
+    
+    # Firestore doesn't support OR queries directly, so we'll do multiple queries
+    first_name_query = users_ref.where('first_name', '>=', query).where('first_name', '<=', query + '\uf8ff')
+    last_name_query = users_ref.where('last_name', '>=', query).where('last_name', '<=', query + '\uf8ff')
+    email_query = users_ref.where('email', '>=', query).where('email', '<=', query + '\uf8ff')
+    
+    # Get results from all queries
+    results = set()
+    for doc in first_name_query.get():
+        results.add((doc.id, doc.to_dict()))
+    for doc in last_name_query.get():
+        results.add((doc.id, doc.to_dict()))
+    for doc in email_query.get():
+        results.add((doc.id, doc.to_dict()))
+    
+    # Convert to User objects and apply pagination
+    users = [User.from_dict(data, doc_id) for doc_id, data in results]
+    return users[skip:skip + limit]
 
-    return db.query(User).filter(
-        (User.first_name.ilike(search_term)) |
-        (User.last_name.ilike(search_term)) |
-        (User.email.ilike(search_term))
-    ).offset(skip).limit(limit).all()
 
-
-def count_search_users(db: Session, query: str) -> int:
+def count_search_users(db: firestore.Client, query: str) -> int:
     """Count the number of users matching a search query."""
-    search_term = f"%{query}%"
-
-    return db.query(User).filter(
-        (User.first_name.ilike(search_term)) |
-        (User.last_name.ilike(search_term)) |
-        (User.email.ilike(search_term))
-    ).count()
+    users_ref = db.collection('users')
+    
+    # Similar to search_users but just count
+    first_name_query = users_ref.where('first_name', '>=', query).where('first_name', '<=', query + '\uf8ff')
+    last_name_query = users_ref.where('last_name', '>=', query).where('last_name', '<=', query + '\uf8ff')
+    email_query = users_ref.where('email', '>=', query).where('email', '<=', query + '\uf8ff')
+    
+    results = set()
+    for doc in first_name_query.get():
+        results.add(doc.id)
+    for doc in last_name_query.get():
+        results.add(doc.id)
+    for doc in email_query.get():
+        results.add(doc.id)
+    
+    return len(results)

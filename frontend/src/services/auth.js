@@ -7,7 +7,7 @@ const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 // Register user
 export const register = async (userData) => {
-  debugLog("Sending registration request with data:", userData);
+  debugLog("Sending registration request with data:", { ...userData, password: '[REDACTED]' });
 
   try {
     // Direct Axios request to bypass custom instance for troubleshooting
@@ -34,7 +34,11 @@ export const register = async (userData) => {
       debugLog("Error message:", error.message);
     }
 
-    throw error;
+    // Rethrow the error with more context
+    const enhancedError = new Error(error.response?.data?.detail || error.message);
+    enhancedError.response = error.response;
+    enhancedError.request = error.request;
+    throw enhancedError;
   }
 };
 
@@ -91,7 +95,11 @@ export const login = async (email, password) => {
       debugLog("Error message:", error.message);
     }
 
-    throw error;
+    // Rethrow the error with more context
+    const enhancedError = new Error(error.response?.data?.detail || error.message);
+    enhancedError.response = error.response;
+    enhancedError.request = error.request;
+    throw enhancedError;
   }
 };
 

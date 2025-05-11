@@ -10,19 +10,10 @@ class Settings:
     PROJECT_NAME: str = "LinkedOut API"
     PROJECT_VERSION: str = "1.0.0"
 
-    # MySQL Configuration (commented out for now)
-    MYSQL_USER: str = os.getenv("MYSQL_USER", "linkedout_user")
-    MYSQL_PASSWORD: str = os.getenv("MYSQL_PASSWORD", "linkedout_password")
-    MYSQL_SERVER: str = os.getenv("MYSQL_SERVER", "localhost")
-    MYSQL_PORT: str = os.getenv("MYSQL_PORT", "3306")
-    MYSQL_DB: str = os.getenv("MYSQL_DB", "linkedout_db")
-
-    # Use SQLite for simplicity and troubleshooting
-    SQLITE_DB_FILE = os.path.join(BASE_DIR, "sqlite_linkedout.db")
-    DATABASE_URL: str = f"sqlite:///{SQLITE_DB_FILE}"
-
-    # Uncomment the MySQL connection string when ready to switch back
-    # DATABASE_URL: str = f"mysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_SERVER}:{MYSQL_PORT}/{MYSQL_DB}"
+    # Firebase Configuration
+    FIREBASE_CREDENTIALS_PATH: str = os.path.join(BASE_DIR, "firebase-credentials.json")
+    FIREBASE_PROJECT_ID: str = "linkedincopy-3423b"
+    FIREBASE_STORAGE_BUCKET: str = "linkedincopy-3423b.firebasestorage.app"
 
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-here")
     ALGORITHM: str = "HS256"

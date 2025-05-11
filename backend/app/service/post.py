@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import HTTPException, UploadFile
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, func, or_
+from firebase_admin import firestore
 
 from app.model.post import Post, Comment, Like, CommentLike
 from app.model.user import User
@@ -11,16 +12,203 @@ from app.schema.post import PostCreate, PostUpdate, CommentCreate, CommentUpdate
 from app.utils.helpers import save_image_with_resize
 
 
-def get_post(db: Session, post_id: int) -> Post:
+def get_post(db: firestore.Client, post_id: str) -> Optional[Post]:
     """Get a post by ID."""
-    post = db.query(Post).filter(Post.id == post_id).first()
-    if not post:
-        raise HTTPException(status_code=404, detail="Post not found")
-    return post
+    posts_ref = db.collection('posts')
+    doc = posts_ref.document(post_id).get()
+    
+    if not doc.exists:
+        return None
+    
+    return Post.from_dict(doc.to_dict())
 
 
-def create_post(db: Session, author_id: int, post_data: PostCreate, image: Optional[UploadFile] = None) -> Post:
+def create_post(db: firestore.Client, post: Post) -> Post:
     """Create a new post."""
+    posts_ref = db.collection('posts')
+    doc_ref = posts_ref.add(post.to_dict())[1]
+    
+    # Get the created document
+    doc = doc_ref.get()
+    return Post.from_dict(doc.to_dict())
+
+
+def update_post(db: firestore.Client, post_id: str, post_data: dict) -> Optional[Post]:
+    """Update a post."""
+    posts_ref = db.collection('posts')
+    doc_ref = posts_ref.document(post_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return None
+    
+    # Update the post
+    doc_ref.update(post_data)
+    
+    # Get the updated document
+    doc = doc_ref.get()
+    return Post.from_dict(doc.to_dict())
+
+
+def delete_post(db: firestore.Client, post_id: str) -> bool:
+    """Delete a post."""
+    posts_ref = db.collection('posts')
+    doc_ref = posts_ref.document(post_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return False
+    
+    # Delete the post
+    doc_ref.delete()
+    return True
+
+
+def get_feed_posts(db: firestore.Client, user_id: str, skip: int = 0, limit: int = 20) -> List[Post]:
+    """Get posts for a user's feed (posts from connections and followed users)."""
+    posts_ref = db.collection('posts')
+    query = posts_ref.order_by('created_at', direction=firestore.Query.DESCENDING)
+    
+    # Apply filters
+    if user_id:
+        query = query.where('user_id', '==', user_id)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    return [Post.from_dict(doc.to_dict()) for doc in docs]
+
+
+def count_feed_posts(db: firestore.Client, user_id: str) -> int:
+    """Count the total number of posts in a user's feed."""
+    posts_ref = db.collection('posts')
+    query = posts_ref.where('user_id', '==', user_id)
+    return query.count()
+
+
+def get_user_posts(db: firestore.Client, user_id: str, skip: int = 0, limit: int = 20) -> List[Post]:
+    """Get all posts by a specific user."""
+    posts_ref = db.collection('posts')
+    query = posts_ref.where('user_id', '==', user_id).order_by('created_at', direction=firestore.Query.DESCENDING)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    return [Post.from_dict(doc.to_dict()) for doc in docs]
+
+
+def count_user_posts(db: firestore.Client, user_id: str) -> int:
+    """Count the total number of posts by a specific user."""
+    posts_ref = db.collection('posts')
+    query = posts_ref.where('user_id', '==', user_id)
+    return query.count()
+
+
+# Comment functions
+def get_comment(db: firestore.Client, comment_id: str) -> Optional[Comment]:
+    """Get a comment by ID."""
+    comments_ref = db.collection('comments')
+    doc = comments_ref.document(comment_id).get()
+    
+    if not doc.exists:
+        return None
+    
+    return Comment.from_dict(doc.to_dict())
+
+
+def create_comment(db: firestore.Client, comment: Comment) -> Comment:
+    """Create a new comment."""
+    comments_ref = db.collection('comments')
+    doc_ref = comments_ref.add(comment.to_dict())[1]
+    
+    # Get the created document
+    doc = doc_ref.get()
+    return Comment.from_dict(doc.to_dict())
+
+
+def update_comment(db: firestore.Client, comment_id: str, comment_data: dict) -> Optional[Comment]:
+    """Update a comment."""
+    comments_ref = db.collection('comments')
+    doc_ref = comments_ref.document(comment_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return None
+    
+    # Update the comment
+    doc_ref.update(comment_data)
+    
+    # Get the updated document
+    doc = doc_ref.get()
+    return Comment.from_dict(doc.to_dict())
+
+
+def delete_comment(db: firestore.Client, comment_id: str) -> bool:
+    """Delete a comment."""
+    comments_ref = db.collection('comments')
+    doc_ref = comments_ref.document(comment_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return False
+    
+    # Delete the comment
+    doc_ref.delete()
+    return True
+
+
+def get_post_comments(db: firestore.Client, post_id: str, skip: int = 0, limit: int = 50) -> List[Comment]:
+    """Get all comments for a post."""
+    comments_ref = db.collection('comments')
+    query = comments_ref.where('post_id', '==', post_id).order_by('created_at', direction=firestore.Query.DESCENDING)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    return [Comment.from_dict(doc.to_dict()) for doc in docs]
+
+
+def count_post_comments(db: firestore.Client, post_id: str) -> int:
+    """Count the total number of comments for a post."""
+    comments_ref = db.collection('comments')
+    query = comments_ref.where('post_id', '==', post_id)
+    return query.count()
+
+
+# Like functions
+def like_post(db: firestore.Client, user_id: str, post_id: str) -> Optional[Like]:
+    """Like a post."""
+    # Check if post exists
+    post = get_post(db, post_id)
+    if not post:
+        return None
+    
+    # Check if already liked
+    likes_ref = db.collection('likes')
+    query = likes_ref.where('user_id', '==', user_id).where('post_id', '==', post_id)
+    docs = query.get()
+    
+    if docs:
+        return Like.from_dict(docs[0].to_dict())
+    
+    # Create new like
+    like = Like(user_id=user_id, post_id=post_id)
+    doc_ref = likes_ref.add(like.to_dict())[1]
+    
+    # Get the created document
+    doc = doc_ref.get()
     # Handle image upload
     image_url = None
     if image:

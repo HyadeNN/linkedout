@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_, and_, func
+from firebase_admin import firestore
 
 from app.model.job import Job, JobApplication, SavedJob
 from app.model.user import User
@@ -9,192 +10,235 @@ from app.model.notification import Notification
 from app.schema.job import JobCreate, JobUpdate, JobApplicationCreate, JobApplicationUpdate, SavedJobCreate
 
 
-def get_job(db: Session, job_id: int) -> Job:
+def get_job(db: firestore.Client, job_id: str) -> Optional[Job]:
     """Get a job by ID."""
-    job = db.query(Job).filter(Job.id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-    return job
+    jobs_ref = db.collection('jobs')
+    doc = jobs_ref.document(job_id).get()
+    
+    if not doc.exists:
+        return None
+    
+    return Job.from_dict(doc.to_dict())
 
 
-def create_job(db: Session, poster_id: int, job_data: JobCreate) -> Job:
-    """Create a new job posting."""
-    # Check if user has employer role
-    user = db.query(User).filter(User.id == poster_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    if user.role != "employer" and user.role != "admin":
-        raise HTTPException(status_code=403, detail="Only employers can post jobs")
-
-    # Create job
-    db_job = Job(
-        poster_id=poster_id,
-        **job_data.dict()
-    )
-
-    db.add(db_job)
-    db.commit()
-    db.refresh(db_job)
-
-    return db_job
+def create_job(db: firestore.Client, job: Job) -> Job:
+    """Create a new job."""
+    jobs_ref = db.collection('jobs')
+    doc_ref = jobs_ref.add(job.to_dict())[1]
+    
+    # Get the created document
+    doc = doc_ref.get()
+    return Job.from_dict(doc.to_dict())
 
 
-def update_job(db: Session, job_id: int, user_id: int, job_data: JobUpdate) -> Job:
-    """Update a job posting."""
-    db_job = get_job(db, job_id)
+def update_job(db: firestore.Client, job_id: str, job_data: dict) -> Optional[Job]:
+    """Update a job."""
+    jobs_ref = db.collection('jobs')
+    doc_ref = jobs_ref.document(job_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return None
+    
+    # Update the job
+    doc_ref.update(job_data)
+    
+    # Get the updated document
+    doc = doc_ref.get()
+    return Job.from_dict(doc.to_dict())
 
-    # Check if user is the poster
-    if db_job.poster_id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to update this job")
 
-    # Update job fields
-    for field, value in job_data.dict(exclude_unset=True).items():
-        setattr(db_job, field, value)
-
-    db.commit()
-    db.refresh(db_job)
-    return db_job
-
-
-def delete_job(db: Session, job_id: int, user_id: int) -> bool:
-    """Delete a job posting."""
-    db_job = get_job(db, job_id)
-
-    # Check if user is the poster or an admin
-    user = db.query(User).filter(User.id == user_id).first()
-    if db_job.poster_id != user_id and user.role != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized to delete this job")
-
-    db.delete(db_job)
-    db.commit()
-
+def delete_job(db: firestore.Client, job_id: str) -> bool:
+    """Delete a job."""
+    jobs_ref = db.collection('jobs')
+    doc_ref = jobs_ref.document(job_id)
+    doc = doc_ref.get()
+    
+    if not doc.exists:
+        return False
+    
+    # Delete the job
+    doc_ref.delete()
     return True
 
 
-def get_jobs(db: Session, skip: int = 0, limit: int = 20) -> List[Job]:
-    """Get all active job postings."""
-    return db.query(Job).filter(Job.is_active == True).order_by(desc(Job.created_at)).offset(skip).limit(limit).all()
+def get_jobs(
+    db: firestore.Client,
+    skip: int = 0,
+    limit: int = 100,
+    company_id: Optional[str] = None,
+    search_query: Optional[str] = None
+) -> List[Job]:
+    """Get all jobs with optional filtering."""
+    jobs_ref = db.collection('jobs')
+    query = jobs_ref.order_by('created_at', direction=firestore.Query.DESCENDING)
+    
+    # Apply filters
+    if company_id:
+        query = query.where('company_id', '==', company_id)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    jobs = [Job.from_dict(doc.to_dict()) for doc in docs]
+    
+    # Apply search filter if provided
+    if search_query:
+        search_query = search_query.lower()
+        jobs = [
+            job for job in jobs
+            if search_query in job.title.lower() or
+               search_query in job.description.lower() or
+               search_query in job.location.lower()
+        ]
+    
+    return jobs
 
 
-def count_jobs(db: Session) -> int:
-    """Count the total number of active job postings."""
-    return db.query(Job).filter(Job.is_active == True).count()
+def count_jobs(db: firestore.Client, company_id: Optional[str] = None) -> int:
+    """Get total number of jobs."""
+    jobs_ref = db.collection('jobs')
+    query = jobs_ref
+    
+    if company_id:
+        query = query.where('company_id', '==', company_id)
+    
+    return len(query.get())
 
 
-def get_user_jobs(db: Session, user_id: int, skip: int = 0, limit: int = 20) -> List[Job]:
+def get_user_jobs(db: firestore.Client, user_id: str, skip: int = 0, limit: int = 100) -> List[Job]:
     """Get all job postings by a specific user."""
-    return db.query(Job).filter(Job.poster_id == user_id).order_by(desc(Job.created_at)).offset(skip).limit(limit).all()
+    jobs_ref = db.collection('jobs')
+    query = jobs_ref.where('poster_id', '==', user_id).order_by('created_at', direction=firestore.Query.DESCENDING)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    jobs = [Job.from_dict(doc.to_dict()) for doc in docs]
+    
+    return jobs
 
 
-def count_user_jobs(db: Session, user_id: int) -> int:
+def count_user_jobs(db: firestore.Client, user_id: str) -> int:
     """Count the total number of job postings by a specific user."""
-    return db.query(Job).filter(Job.poster_id == user_id).count()
+    jobs_ref = db.collection('jobs')
+    query = jobs_ref.where('poster_id', '==', user_id)
+    
+    return len(query.get())
 
 
-def search_jobs(db: Session, query: Optional[str] = None, location: Optional[str] = None,
+def search_jobs(db: firestore.Client, query: Optional[str] = None, location: Optional[str] = None,
                 job_type: Optional[str] = None, is_remote: Optional[bool] = None,
                 min_salary: Optional[float] = None, max_salary: Optional[float] = None,
-                skip: int = 0, limit: int = 20) -> List[Job]:
+                skip: int = 0, limit: int = 100) -> List[Job]:
     """Search for jobs with various filters."""
-    # Base query: only active jobs
-    jobs_query = db.query(Job).filter(Job.is_active == True)
-
+    jobs_ref = db.collection('jobs')
+    query = jobs_ref.order_by('created_at', direction=firestore.Query.DESCENDING)
+    
     # Apply filters
     if query:
         search_term = f"%{query}%"
-        jobs_query = jobs_query.filter(
-            or_(
-                Job.title.ilike(search_term),
-                Job.company_name.ilike(search_term),
-                Job.description.ilike(search_term),
-                Job.requirements.ilike(search_term)
-            )
-        )
-
+        query = query.where('title', '>=', search_term).where('title', '<=', search_term)
+    
     if location:
         search_location = f"%{location}%"
-        jobs_query = jobs_query.filter(Job.location.ilike(search_location))
-
+        query = query.where('location', '>=', search_location).where('location', '<=', search_location)
+    
     if job_type:
-        jobs_query = jobs_query.filter(Job.job_type == job_type)
-
+        query = query.where('job_type', '==', job_type)
+    
     if is_remote is not None:
-        jobs_query = jobs_query.filter(Job.is_remote == is_remote)
-
+        query = query.where('is_remote', '==', is_remote)
+    
     if min_salary is not None:
-        jobs_query = jobs_query.filter(Job.salary_max >= min_salary)
-
+        query = query.where('salary_max', '>=', min_salary)
+    
     if max_salary is not None:
-        jobs_query = jobs_query.filter(Job.salary_min <= max_salary)
+        query = query.where('salary_min', '<=', max_salary)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    jobs = [Job.from_dict(doc.to_dict()) for doc in docs]
+    
+    # Apply search filter if provided
+    if query:
+        search_query = query.to_dict()['title'].lower()
+        jobs = [
+            job for job in jobs
+            if search_query in job.title.lower() or
+               search_query in job.description.lower() or
+               search_query in job.location.lower()
+        ]
+    
+    return jobs
 
-    # Order by created_at and apply pagination
-    return jobs_query.order_by(desc(Job.created_at)).offset(skip).limit(limit).all()
 
-
-def count_search_jobs(db: Session, query: Optional[str] = None, location: Optional[str] = None,
+def count_search_jobs(db: firestore.Client, query: Optional[str] = None, location: Optional[str] = None,
                       job_type: Optional[str] = None, is_remote: Optional[bool] = None,
                       min_salary: Optional[float] = None, max_salary: Optional[float] = None) -> int:
     """Count the number of jobs matching the search criteria."""
-    # Base query: only active jobs
-    jobs_query = db.query(Job).filter(Job.is_active == True)
-
+    jobs_ref = db.collection('jobs')
+    query = jobs_ref
+    
     # Apply filters
     if query:
         search_term = f"%{query}%"
-        jobs_query = jobs_query.filter(
-            or_(
-                Job.title.ilike(search_term),
-                Job.company_name.ilike(search_term),
-                Job.description.ilike(search_term),
-                Job.requirements.ilike(search_term)
-            )
-        )
-
+        query = query.where('title', '>=', search_term).where('title', '<=', search_term)
+    
     if location:
         search_location = f"%{location}%"
-        jobs_query = jobs_query.filter(Job.location.ilike(search_location))
-
+        query = query.where('location', '>=', search_location).where('location', '<=', search_location)
+    
     if job_type:
-        jobs_query = jobs_query.filter(Job.job_type == job_type)
-
+        query = query.where('job_type', '==', job_type)
+    
     if is_remote is not None:
-        jobs_query = jobs_query.filter(Job.is_remote == is_remote)
-
+        query = query.where('is_remote', '==', is_remote)
+    
     if min_salary is not None:
-        jobs_query = jobs_query.filter(Job.salary_max >= min_salary)
-
+        query = query.where('salary_max', '>=', min_salary)
+    
     if max_salary is not None:
-        jobs_query = jobs_query.filter(Job.salary_min <= max_salary)
-
-    return jobs_query.count()
+        query = query.where('salary_min', '<=', max_salary)
+    
+    return len(query.get())
 
 
 # Job application functions
-def get_job_application(db: Session, application_id: int) -> JobApplication:
+def get_job_application(db: firestore.Client, application_id: str) -> Optional[JobApplication]:
     """Get a job application by ID."""
-    application = db.query(JobApplication).filter(JobApplication.id == application_id).first()
-    if not application:
-        raise HTTPException(status_code=404, detail="Job application not found")
-    return application
+    application_ref = db.collection('job_applications').document(application_id)
+    doc = application_ref.get()
+    
+    if not doc.exists:
+        return None
+    
+    return JobApplication.from_dict(doc.to_dict())
 
 
-def create_job_application(db: Session, applicant_id: int, application_data: JobApplicationCreate) -> JobApplication:
+def create_job_application(db: firestore.Client, applicant_id: str, application_data: JobApplicationCreate) -> JobApplication:
     """Create a new job application."""
     # Check if job exists and is active
-    job = db.query(Job).filter(
-        (Job.id == application_data.job_id) &
-        (Job.is_active == True)
-    ).first()
+    job = get_job(db, application_data.job_id)
 
     if not job:
         raise HTTPException(status_code=404, detail="Job not found or inactive")
 
     # Check if user has already applied
-    existing_application = db.query(JobApplication).filter(
-        (JobApplication.job_id == application_data.job_id) &
-        (JobApplication.applicant_id == applicant_id)
-    ).first()
+    existing_application = get_job_application(db, application_data.id)
 
     if existing_application:
         raise HTTPException(status_code=400, detail="You have already applied for this job")
@@ -207,45 +251,51 @@ def create_job_application(db: Session, applicant_id: int, application_data: Job
         status="pending"
     )
 
-    db.add(db_application)
-    db.commit()
-    db.refresh(db_application)
+    # Add application to Firestore
+    application_ref = db.collection('job_applications').document(application_data.id)
+    application_ref.set(db_application.to_dict())
 
     # Create notification for job poster
-    applicant = db.query(User).filter(User.id == applicant_id).first()
+    applicant = get_user(db, applicant_id)
 
     notification = Notification(
         user_id=job.poster_id,
         type="job_application",
         message=f"{applicant.first_name} {applicant.last_name} applied for your job posting: {job.title}",
-        source_id=db_application.id,
+        source_id=application_data.id,
         source_type="job_application",
         created_by=applicant_id
     )
 
-    db.add(notification)
-    db.commit()
+    # Add notification to Firestore
+    notification_ref = db.collection('notifications').document(notification.id)
+    notification_ref.set(notification.to_dict())
 
     return db_application
 
 
-def update_job_application_status(db: Session, application_id: int, user_id: int,
+def update_job_application_status(db: firestore.Client, application_id: str, user_id: str,
                                   application_data: JobApplicationUpdate) -> JobApplication:
     """Update a job application status."""
-    db_application = get_job_application(db, application_id)
+    application_ref = db.collection('job_applications').document(application_id)
+    doc = application_ref.get()
+    
+    if not doc.exists:
+        raise HTTPException(status_code=404, detail="Job application not found")
+    
+    db_application = JobApplication.from_dict(doc.to_dict())
 
     # Check if user is the job poster
-    job = db.query(Job).filter(Job.id == db_application.job_id).first()
+    job = get_job(db, db_application.job_id)
     if job.poster_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to update this application")
 
     # Update status
     db_application.status = application_data.status
-    db.commit()
-    db.refresh(db_application)
+    application_ref.update(db_application.to_dict())
 
     # Create notification for applicant
-    employer = db.query(User).filter(User.id == user_id).first()
+    employer = get_user(db, user_id)
 
     notification_message = f"Your application for {job.title} has been {application_data.status}"
 
@@ -253,132 +303,169 @@ def update_job_application_status(db: Session, application_id: int, user_id: int
         user_id=db_application.applicant_id,
         type="application_status",
         message=notification_message,
-        source_id=db_application.id,
+        source_id=application_id,
         source_type="job_application",
         created_by=user_id
     )
 
-    db.add(notification)
-    db.commit()
+    # Add notification to Firestore
+    notification_ref = db.collection('notifications').document(notification.id)
+    notification_ref.set(notification.to_dict())
 
     return db_application
 
 
-def get_job_applications(db: Session, job_id: int, user_id: int, skip: int = 0, limit: int = 50) -> List[
+def get_job_applications(db: firestore.Client, job_id: str, user_id: str, skip: int = 0, limit: int = 50) -> List[
     JobApplication]:
     """Get all applications for a job."""
+    applications_ref = db.collection('job_applications')
+    query = applications_ref.where('job_id', '==', job_id).order_by('created_at', direction=firestore.Query.DESCENDING)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    applications = [JobApplication.from_dict(doc.to_dict()) for doc in docs]
+    
     # Check if user is the job poster
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
     if job.poster_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to view these applications")
 
-    return db.query(JobApplication).filter(JobApplication.job_id == job_id).order_by(
-        desc(JobApplication.created_at)
-    ).offset(skip).limit(limit).all()
+    return applications
 
 
-def count_job_applications(db: Session, job_id: int, user_id: int) -> int:
+def count_job_applications(db: firestore.Client, job_id: str, user_id: str) -> int:
     """Count the total number of applications for a job."""
+    applications_ref = db.collection('job_applications')
+    query = applications_ref.where('job_id', '==', job_id)
+    
     # Check if user is the job poster
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = get_job(db, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
 
     if job.poster_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to view these applications")
 
-    return db.query(JobApplication).filter(JobApplication.job_id == job_id).count()
+    return len(query.get())
 
 
-def get_user_applications(db: Session, user_id: int, skip: int = 0, limit: int = 50) -> List[JobApplication]:
+def get_user_applications(db: firestore.Client, user_id: str, skip: int = 0, limit: int = 50) -> List[JobApplication]:
     """Get all job applications by a specific user."""
-    return db.query(JobApplication).filter(JobApplication.applicant_id == user_id).order_by(
-        desc(JobApplication.created_at)
-    ).offset(skip).limit(limit).all()
+    applications_ref = db.collection('job_applications')
+    query = applications_ref.where('applicant_id', '==', user_id).order_by('created_at', direction=firestore.Query.DESCENDING)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    applications = [JobApplication.from_dict(doc.to_dict()) for doc in docs]
+    
+    return applications
 
 
-def count_user_applications(db: Session, user_id: int) -> int:
+def count_user_applications(db: firestore.Client, user_id: str) -> int:
     """Count the total number of job applications by a specific user."""
-    return db.query(JobApplication).filter(JobApplication.applicant_id == user_id).count()
+    applications_ref = db.collection('job_applications')
+    query = applications_ref.where('applicant_id', '==', user_id)
+    
+    return len(query.get())
 
 
 # Saved job functions
-def save_job(db: Session, user_id: int, saved_job_data: SavedJobCreate) -> SavedJob:
+def save_job(db: firestore.Client, user_id: str, job_id: str) -> Optional[SavedJob]:
     """Save a job for a user."""
-    # Check if job exists and is active
-    job = db.query(Job).filter(
-        (Job.id == saved_job_data.job_id) &
-        (Job.is_active == True)
-    ).first()
-
+    # Check if job exists
+    job = get_job(db, job_id)
     if not job:
-        raise HTTPException(status_code=404, detail="Job not found or inactive")
-
+        return None
+    
     # Check if already saved
-    existing_saved = db.query(SavedJob).filter(
-        (SavedJob.job_id == saved_job_data.job_id) &
-        (SavedJob.user_id == user_id)
-    ).first()
-
-    if existing_saved:
-        raise HTTPException(status_code=400, detail="Job already saved")
-
-    # Create saved job
-    db_saved_job = SavedJob(
-        job_id=saved_job_data.job_id,
-        user_id=user_id
-    )
-
-    db.add(db_saved_job)
-    db.commit()
-    db.refresh(db_saved_job)
-
-    return db_saved_job
+    saved_jobs_ref = db.collection('saved_jobs')
+    query = saved_jobs_ref.where('user_id', '==', user_id).where('job_id', '==', job_id)
+    docs = query.get()
+    
+    if docs:
+        return SavedJob.from_dict(docs[0].to_dict())
+    
+    # Create new saved job
+    saved_job = SavedJob(user_id=user_id, job_id=job_id)
+    doc_ref = saved_jobs_ref.add(saved_job.to_dict())[1]
+    
+    # Get the created document
+    doc = doc_ref.get()
+    return SavedJob.from_dict(doc.to_dict())
 
 
-def remove_saved_job(db: Session, user_id: int, job_id: int) -> bool:
-    """Remove a saved job."""
-    # Check if saved
-    db_saved_job = db.query(SavedJob).filter(
-        (SavedJob.job_id == job_id) &
-        (SavedJob.user_id == user_id)
-    ).first()
-
-    if not db_saved_job:
-        raise HTTPException(status_code=404, detail="Job not saved")
-
-    db.delete(db_saved_job)
-    db.commit()
-
+def unsave_job(db: firestore.Client, user_id: str, job_id: str) -> bool:
+    """Unsave a job for a user."""
+    saved_jobs_ref = db.collection('saved_jobs')
+    query = saved_jobs_ref.where('user_id', '==', user_id).where('job_id', '==', job_id)
+    docs = query.get()
+    
+    if not docs:
+        return False
+    
+    # Delete the saved job
+    docs[0].reference.delete()
     return True
 
 
-def get_saved_jobs(db: Session, user_id: int, skip: int = 0, limit: int = 20) -> List[SavedJob]:
+def get_saved_jobs(db: firestore.Client, user_id: str, skip: int = 0, limit: int = 100) -> List[Job]:
     """Get all saved jobs for a user."""
-    return db.query(SavedJob).filter(SavedJob.user_id == user_id).order_by(
-        desc(SavedJob.created_at)
-    ).offset(skip).limit(limit).all()
+    saved_jobs_ref = db.collection('saved_jobs')
+    query = saved_jobs_ref.where('user_id', '==', user_id).order_by('created_at', direction=firestore.Query.DESCENDING)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    saved_jobs = [SavedJob.from_dict(doc.to_dict()) for doc in docs]
+    
+    # Get the actual jobs
+    jobs = []
+    for saved_job in saved_jobs:
+        job = get_job(db, saved_job.job_id)
+        if job:
+            jobs.append(job)
+    
+    return jobs
 
 
-def count_saved_jobs(db: Session, user_id: int) -> int:
+def count_saved_jobs(db: firestore.Client, user_id: str) -> int:
     """Count the total number of saved jobs for a user."""
-    return db.query(SavedJob).filter(SavedJob.user_id == user_id).count()
+    saved_jobs_ref = db.collection('saved_jobs')
+    query = saved_jobs_ref.where('user_id', '==', user_id)
+    
+    return len(query.get())
 
 
-def is_job_saved(db: Session, user_id: int, job_id: int) -> bool:
+def is_job_saved(db: firestore.Client, user_id: str, job_id: str) -> bool:
     """Check if a job is saved by a user."""
-    return db.query(SavedJob).filter(
-        (SavedJob.job_id == job_id) &
-        (SavedJob.user_id == user_id)
-    ).first() is not None
+    saved_jobs_ref = db.collection('saved_jobs')
+    query = saved_jobs_ref.where('user_id', '==', user_id).where('job_id', '==', job_id)
+    docs = query.get()
+    
+    return docs.exists
 
 
-def is_job_applied(db: Session, user_id: int, job_id: int) -> bool:
+def is_job_applied(db: firestore.Client, user_id: str, job_id: str) -> bool:
     """Check if a user has applied for a job."""
-    return db.query(JobApplication).filter(
-        (JobApplication.job_id == job_id) &
-        (JobApplication.applicant_id == user_id)
-    ).first() is not None
+    applications_ref = db.collection('job_applications')
+    query = applications_ref.where('job_id', '==', job_id).where('applicant_id', '==', user_id)
+    docs = query.get()
+    
+    return docs.exists

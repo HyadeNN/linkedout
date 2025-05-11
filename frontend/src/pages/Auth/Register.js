@@ -23,6 +23,10 @@ const Register = () => {
       ...prevData,
       [name]: value
     }));
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
   };
 
   // Validate form
@@ -59,10 +63,12 @@ const Register = () => {
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submission started');
 
     // Validate form
     const newErrors = validateForm();
     if (Object.keys(newErrors).length > 0) {
+      console.log('Validation errors:', newErrors);
       setErrors(newErrors);
       return;
     }
@@ -71,19 +77,26 @@ const Register = () => {
     setErrors({});
 
     try {
+      console.log('Attempting registration with data:', { ...formData, password: '[REDACTED]' });
       setLoading(true);
       await register(formData);
+      console.log('Registration successful');
       setRegistrationSuccess(true);
     } catch (error) {
       console.error('Registration failed:', error);
 
-      if (error.response && error.response.data) {
+      if (error.response) {
+        console.log('Error response:', error.response);
         if (error.response.data.detail === 'Email already registered') {
           setErrors({ email: 'Email already registered' });
         } else {
           setErrors({ general: error.response.data.detail || 'Registration failed. Please try again.' });
         }
+      } else if (error.request) {
+        console.log('No response received:', error.request);
+        setErrors({ general: 'No response from server. Please check your internet connection.' });
       } else {
+        console.log('Error setting up request:', error.message);
         setErrors({ general: 'Registration failed. Please try again.' });
       }
     } finally {

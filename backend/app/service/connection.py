@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import HTTPException
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, and_, or_, not_
+from firebase_admin import firestore
 
 from app.model.connection import Connection, Follow
 from app.model.user import User
@@ -9,12 +10,93 @@ from app.model.notification import Notification
 from app.schema.connection import ConnectionCreate, ConnectionUpdate, FollowCreate
 
 
-def get_connection(db: Session, connection_id: int) -> Connection:
-    """Get a connection by ID."""
-    connection = db.query(Connection).filter(Connection.id == connection_id).first()
-    if not connection:
-        raise HTTPException(status_code=404, detail="Connection not found")
-    return connection
+def get_connection(db: firestore.Client, user_id: str, connected_user_id: str) -> Optional[Connection]:
+    """Get connection between two users."""
+    connections_ref = db.collection('connections')
+    query = connections_ref.where('user_id', '==', user_id).where('connected_user_id', '==', connected_user_id)
+    docs = query.get()
+    
+    if not docs:
+        return None
+    
+    return Connection.from_dict(docs[0].to_dict())
+
+
+def get_connections(db: firestore.Client, user_id: str, skip: int = 0, limit: int = 100) -> List[Connection]:
+    """Get all connections for a user."""
+    connections_ref = db.collection('connections')
+    query = connections_ref.where('user_id', '==', user_id).order_by('created_at', direction=firestore.Query.DESCENDING)
+    
+    # Apply pagination
+    if skip > 0:
+        query = query.offset(skip)
+    if limit > 0:
+        query = query.limit(limit)
+    
+    docs = query.get()
+    return [Connection.from_dict(doc.to_dict()) for doc in docs]
+
+
+def create_connection(db: firestore.Client, user_id: str, connected_user_id: str) -> Connection:
+    """Create a new connection."""
+    # Check if connection already exists
+    existing = get_connection(db, user_id, connected_user_id)
+    if existing:
+        return existing
+    
+    # Create new connection
+    connection = Connection(
+        user_id=user_id,
+        connected_user_id=connected_user_id,
+        status='pending'
+    )
+    
+    # Add to Firestore
+    connections_ref = db.collection('connections')
+    doc_ref = connections_ref.add(connection.to_dict())[1]
+    
+    # Get the created document
+    doc = doc_ref.get()
+    return Connection.from_dict(doc.to_dict())
+
+
+def update_connection_status(db: firestore.Client, user_id: str, connected_user_id: str, status: str) -> Optional[Connection]:
+    """Update connection status."""
+    connections_ref = db.collection('connections')
+    query = connections_ref.where('user_id', '==', user_id).where('connected_user_id', '==', connected_user_id)
+    docs = query.get()
+    
+    if not docs:
+        return None
+    
+    # Update the connection
+    doc_ref = docs[0].reference
+    doc_ref.update({'status': status})
+    
+    # Get the updated document
+    doc = doc_ref.get()
+    return Connection.from_dict(doc.to_dict())
+
+
+def delete_connection(db: firestore.Client, user_id: str, connected_user_id: str) -> bool:
+    """Delete a connection."""
+    connections_ref = db.collection('connections')
+    query = connections_ref.where('user_id', '==', user_id).where('connected_user_id', '==', connected_user_id)
+    docs = query.get()
+    
+    if not docs:
+        return False
+    
+    # Delete the connection
+    docs[0].reference.delete()
+    return True
+
+
+def get_connection_count(db: firestore.Client, user_id: str) -> int:
+    """Get total number of connections for a user."""
+    connections_ref = db.collection('connections')
+    query = connections_ref.where('user_id', '==', user_id)
+    return len(query.get())
 
 
 def get_connection_by_users(db: Session, sender_id: int, receiver_id: int) -> Optional[Connection]:

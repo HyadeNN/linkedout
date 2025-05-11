@@ -47,11 +47,14 @@ export const AuthProvider = ({ children }) => {
   // Login function
   const handleLogin = async (email, password) => {
     try {
+      console.log('Attempting login for:', email);
       setLoading(true);
       const result = await authService.login(email, password);
+      console.log('Login successful:', result);
       setUser(result.user);
       return result;
     } catch (error) {
+      console.error('Login failed:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -61,9 +64,13 @@ export const AuthProvider = ({ children }) => {
   // Register function
   const handleRegister = async (userData) => {
     try {
+      console.log('Attempting registration with data:', { ...userData, password: '[REDACTED]' });
       setLoading(true);
-      return await authService.register(userData);
+      const result = await authService.register(userData);
+      console.log('Registration successful:', result);
+      return result;
     } catch (error) {
+      console.error('Registration failed:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -72,6 +79,7 @@ export const AuthProvider = ({ children }) => {
 
   // Logout function
   const handleLogout = () => {
+    console.log('Logging out user');
     authService.logout();
     setUser(null);
   };

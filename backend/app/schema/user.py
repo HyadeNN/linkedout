@@ -21,6 +21,9 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class FirebaseLogin(BaseModel):
+    id_token: str
+
 class UserUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
@@ -49,20 +52,13 @@ class UserInDB(UserBase):
     role: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+    firebase_uid: Optional[str] = None
 
     class Config:
         orm_mode = True
 
-class UserResponse(UserBase):
-    id: int
-    is_active: bool
-    is_verified: bool
-    role: str
-    created_at: datetime
-    updated_at: Optional[datetime] = None
-
-    class Config:
-        orm_mode = True
+class UserResponse(UserInDB):
+    pass
 
 class Token(BaseModel):
     access_token: str

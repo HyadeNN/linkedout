@@ -1,59 +1,106 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, Float, Boolean
-from sqlalchemy.orm import relationship
-from sqlalchemy.sql import func
+from datetime import datetime
+from typing import Optional, Dict, Any
 
-from app.database import Base
+class Job:
+    """Job model for Firestore."""
+    def __init__(
+        self,
+        title: str,
+        company_name: str,
+        location: str,
+        job_type: str,
+        description: str,
+        requirements: Optional[str] = None,
+        salary_min: Optional[float] = None,
+        salary_max: Optional[float] = None,
+        currency: Optional[str] = None,
+        is_remote: bool = False,
+        poster_id: Optional[str] = None,
+        is_active: bool = True,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+        job_id: Optional[str] = None
+    ):
+        self.job_id = job_id
+        self.title = title
+        self.company_name = company_name
+        self.location = location
+        self.job_type = job_type
+        self.description = description
+        self.requirements = requirements
+        self.salary_min = salary_min
+        self.salary_max = salary_max
+        self.currency = currency
+        self.is_remote = is_remote
+        self.poster_id = poster_id
+        self.is_active = is_active
+        self.created_at = created_at or datetime.utcnow()
+        self.updated_at = updated_at
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "title": self.title,
+            "company_name": self.company_name,
+            "location": self.location,
+            "job_type": self.job_type,
+            "description": self.description,
+            "requirements": self.requirements,
+            "salary_min": self.salary_min,
+            "salary_max": self.salary_max,
+            "currency": self.currency,
+            "is_remote": self.is_remote,
+            "poster_id": self.poster_id,
+            "is_active": self.is_active,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at
+        }
 
-class Job(Base):
-    __tablename__ = "jobs"
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], job_id: Optional[str] = None) -> 'Job':
+        return cls(
+            title=data["title"],
+            company_name=data["company_name"],
+            location=data["location"],
+            job_type=data["job_type"],
+            description=data["description"],
+            requirements=data.get("requirements"),
+            salary_min=data.get("salary_min"),
+            salary_max=data.get("salary_max"),
+            currency=data.get("currency"),
+            is_remote=data.get("is_remote", False),
+            poster_id=data.get("poster_id"),
+            is_active=data.get("is_active", True),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+            job_id=job_id
+        )
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
-    company_name = Column(String(255), nullable=False)
-    location = Column(String(255), nullable=False)
-    job_type = Column(String(50), nullable=False)  # full-time, part-time, contract, etc.
-    description = Column(Text, nullable=False)
-    requirements = Column(Text, nullable=True)
-    salary_min = Column(Float, nullable=True)
-    salary_max = Column(Float, nullable=True)
-    currency = Column(String(10), nullable=True)
-    is_remote = Column(Boolean, default=False)
-    poster_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+class SavedJob:
+    """SavedJob model for Firestore."""
+    def __init__(
+        self,
+        job_id: str,
+        user_id: str,
+        created_at: Optional[datetime] = None,
+        saved_job_id: Optional[str] = None
+    ):
+        self.saved_job_id = saved_job_id
+        self.job_id = job_id
+        self.user_id = user_id
+        self.created_at = created_at or datetime.utcnow()
 
-    # Define relationships
-    poster = relationship("User", back_populates="job_posts")
-    applications = relationship("JobApplication", back_populates="job", cascade="all, delete-orphan")
-    saved_jobs = relationship("SavedJob", back_populates="job", cascade="all, delete-orphan")
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "job_id": self.job_id,
+            "user_id": self.user_id,
+            "created_at": self.created_at
+        }
 
-
-class JobApplication(Base):
-    __tablename__ = "job_applications"
-
-    id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"))
-    applicant_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    cover_letter = Column(Text, nullable=True)
-    status = Column(String(50), default="pending")  # pending, reviewed, interviewing, rejected, accepted
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-
-    # Define relationships
-    job = relationship("Job", back_populates="applications")
-    applicant = relationship("User", back_populates="job_applications")
-
-
-class SavedJob(Base):
-    __tablename__ = "saved_jobs"
-
-    id = Column(Integer, primary_key=True, index=True)
-    job_id = Column(Integer, ForeignKey("jobs.id", ondelete="CASCADE"))
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-    # Define relationships
-    job = relationship("Job", back_populates="saved_jobs")
-    user = relationship("User")
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], saved_job_id: Optional[str] = None) -> 'SavedJob':
+        return cls(
+            job_id=data["job_id"],
+            user_id=data["user_id"],
+            created_at=data.get("created_at"),
+            saved_job_id=saved_job_id
+        )
