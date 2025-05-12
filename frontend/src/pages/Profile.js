@@ -582,8 +582,8 @@ const Profile = () => {
                 </button>
               </div>
               
-              {editingSection === 'experience' && editingItem.section === 'experience' ? (
-                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); handleUpdateItem('experience'); }}>
+              {editingSection === 'experience' && (
+                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); editingItem.id ? handleUpdateItem('experience') : handleAddItem('experience'); }}>
                   <input
                     type="text"
                     name="title"
@@ -639,9 +639,9 @@ const Profile = () => {
                     placeholder="Description"
                     rows="3"
                   />
-                  <button type="submit" className="save-button">Update Experience</button>
+                  <button type="submit" className="save-button">{editingItem.id ? 'Update Experience' : 'Add Experience'}</button>
                 </form>
-              ) : null}
+              )}
 
               <div className="profile-section-content">
                 {profile?.experience?.length > 0 ? (
@@ -693,8 +693,8 @@ const Profile = () => {
                 </button>
               </div>
 
-              {editingSection === 'education' && editingItem.section === 'education' ? (
-                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); handleUpdateItem('education'); }}>
+              {editingSection === 'education' && (
+                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); editingItem.id ? handleUpdateItem('education') : handleAddItem('education'); }}>
                   <input
                     type="text"
                     name="school"
@@ -750,9 +750,9 @@ const Profile = () => {
                     placeholder="Description"
                     rows="3"
                   />
-                  <button type="submit" className="save-button">Update Education</button>
+                  <button type="submit" className="save-button">{editingItem.id ? 'Update Education' : 'Add Education'}</button>
                 </form>
-              ) : null}
+              )}
 
               <div className="profile-section-content">
                 {profile?.education?.length > 0 ? (
@@ -803,8 +803,8 @@ const Profile = () => {
                 </button>
               </div>
 
-              {editingSection === 'skill' && editingItem.section === 'skill' ? (
-                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); handleUpdateItem('skill'); }}>
+              {editingSection === 'skill' && (
+                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); editingItem.id ? handleUpdateItem('skill') : handleAddItem('skill'); }}>
                   <input
                     type="text"
                     name="name"
@@ -823,9 +823,9 @@ const Profile = () => {
                       <option key={company} value={company}>{company}</option>
                     ))}
                   </select>
-                  <button type="submit" className="save-button">Update Skill</button>
+                  <button type="submit" className="save-button">{editingItem.id ? 'Update Skill' : 'Add Skill'}</button>
                 </form>
-              ) : null}
+              )}
 
               <div className="profile-section-content skills-section-content">
                 {profile?.skill?.length > 0 ? (
@@ -1032,8 +1032,8 @@ const Profile = () => {
                 </button>
               </div>
 
-              {editingSection === 'activity' && editingItem.section === 'activity' ? (
-                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); handleUpdateItem('activity'); }}>
+              {editingSection === 'activity' && (
+                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); editingItem.id ? handleUpdateItem('activity') : handleAddItem('activity'); }}>
                   <input
                     type="text"
                     name="title"
@@ -1056,9 +1056,9 @@ const Profile = () => {
                     placeholder="Activity description"
                     rows="3"
                   />
-                  <button type="submit" className="save-button">Update Activity</button>
+                  <button type="submit" className="save-button">{editingItem.id ? 'Update Activity' : 'Add Activity'}</button>
                 </form>
-              ) : null}
+              )}
 
               <div className="profile-section-content">
                 {profile?.activity?.length > 0 ? (
@@ -1107,8 +1107,8 @@ const Profile = () => {
                 </button>
               </div>
 
-              {editingSection === 'interest' && editingItem.section === 'interest' ? (
-                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); handleUpdateItem('interest'); }}>
+              {editingSection === 'interest' && (
+                <form className="edit-form" onSubmit={(e) => { e.preventDefault(); editingItem.id ? handleUpdateItem('interest') : handleAddItem('interest'); }}>
                   <input
                     type="text"
                     name="name"
@@ -1124,9 +1124,9 @@ const Profile = () => {
                     placeholder="Interest description"
                     rows="3"
                   />
-                  <button type="submit" className="save-button">Update Interest</button>
+                  <button type="submit" className="save-button">{editingItem.id ? 'Update Interest' : 'Add Interest'}</button>
                 </form>
-              ) : null}
+              )}
 
               <div className="profile-section-content">
                 {profile?.interest?.length > 0 ? (

@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { postService } from '../services';
 import CommentSection from '../components/feed/CommentSection';
 import './Home.css';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // Yardımcı fonksiyon: Firestore Timestamp, string veya number'ı Date'e çevir
 function getValidDate(date) {
@@ -30,7 +32,32 @@ const Home = () => {
     try {
       setLoading(true);
       const data = await postService.getFeedPosts();
-      setPosts(data || []);
+      // Fetch author info for each post if not present
+      const postsWithAuthors = await Promise.all(
+        data.map(async post => {
+          if (!post.author) {
+            try {
+              const userDoc = await getDoc(doc(db, 'users', post.userId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                return {
+                  ...post,
+                  author: {
+                    first_name: userData.name || '',
+                    last_name: '',
+                    profile: {
+                      profile_image: userData.profile?.profile_image || userData.profile_image || '',
+                      headline: userData.headline || ''
+                    }
+                  }
+                };
+              }
+            } catch (e) {}
+          }
+          return post;
+        })
+      );
+      setPosts(postsWithAuthors || []);
     } catch (error) {
       setError('Gönderiler yüklenirken bir hata oluştu.');
     } finally {
@@ -121,7 +148,7 @@ const Home = () => {
                   <Link to={`/users/${post.userId}`} className="post-author">
                     <img
                       src={post.author?.profile?.profile_image || '/default-avatar.jpg'}
-                      alt={`${post.author?.first_name} ${post.author?.last_name}`}
+                      alt={`${post.author?.first_name || ''} ${post.author?.last_name || ''}`}
                       className="author-avatar"
                     />
                     <div className="author-info">

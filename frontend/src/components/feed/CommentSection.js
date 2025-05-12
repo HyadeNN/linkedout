@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { postService } from '../../services';
 import './CommentSection.css';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
   const { user } = useAuth();
@@ -26,15 +28,30 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
   const fetchComments = async () => {
     try {
       setLoading(true);
-      const response = await postService.getComments(postId, page);
-
-      if (page === 1) {
-        setComments(response.items);
-      } else {
-        setComments(prevComments => [...prevComments, ...response.items]);
-      }
-
-      setHasMore(response.has_next);
+      const comments = await postService.getComments(postId);
+      // Fetch author info for each comment
+      const commentsWithAuthors = await Promise.all(
+        comments.map(async comment => {
+          const userDoc = await getDoc(doc(db, 'users', comment.userId));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            return {
+              ...comment,
+              author: {
+                first_name: userData.name || '',
+                last_name: '',
+                profile: {
+                  profile_image: userData.profile?.profile_image || userData.profile_image || '',
+                  headline: userData.headline || ''
+                }
+              }
+            };
+          }
+          return comment;
+        })
+      );
+      setComments(commentsWithAuthors);
+      setHasMore(false);
     } catch (error) {
       setError('Yorumlar yüklenemedi.');
     } finally {
@@ -50,25 +67,30 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
   // Handle comment submission
   const handleSubmitComment = async (e) => {
     e.preventDefault();
-
     if (commentContent.trim() === '') {
       return;
     }
-
     try {
       setSubmitting(true);
-      const newComment = await postService.createComment(postId, {
-        post_id: postId,
-        content: commentContent
-      });
-
-      // Add new comment to the list
+      const newCommentId = await postService.createComment(postId, user.uid, commentContent);
+      // Fetch the new comment with author info
+      const commentDoc = await getDoc(doc(db, 'comments', newCommentId));
+      let newComment = { id: commentDoc.id, ...commentDoc.data() };
+      // Fetch author profile
+      const userDoc = await getDoc(doc(db, 'users', newComment.userId));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        newComment.author = {
+          first_name: userData.name || '',
+          last_name: '',
+          profile: {
+            profile_image: userData.profile?.profile_image || userData.profile_image || '',
+            headline: userData.headline || ''
+          }
+        };
+      }
       setComments(prevComments => [newComment, ...prevComments]);
-
-      // Reset form
       setCommentContent('');
-
-      // Notify parent component
       onCommentAdded();
     } catch (error) {
       setError('Yorum eklenemedi.');
