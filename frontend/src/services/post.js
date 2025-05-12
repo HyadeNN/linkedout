@@ -62,8 +62,7 @@ export const searchPosts = async (query, page = 1, limit = 20) => {
 // Create a comment
 export const createComment = async (postId, content) => {
   const response = await api.post(`/posts/${postId}/comments`, {
-    post_id: postId,
-    content,
+    content: content
   });
   return response.data;
 };

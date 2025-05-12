@@ -550,9 +550,11 @@ ul, ol {
 }
 
 .profile-details {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  padding: 0 16px 16px;
-  position: relative;
+  margin-top: 10px;
 }
 
 .profile-avatar {
@@ -565,22 +567,28 @@ ul, ol {
   overflow: hidden;
 }
 
-.avatar-image {
+.profile-photo .photo {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
 .profile-name {
-  font-size: 16px;
+  font-size: 24px;
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .profile-headline {
+  font-size: 16px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.profile-location {
   font-size: 14px;
   color: var(--text-secondary);
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .profile-stats {
@@ -1602,4 +1610,273 @@ ul, ol {
     left: 0;
     border-radius: 0;
   }
+}
+
+/* Profile View Photo Styles */
+.profile-view .profile-photo {
+  width: 175px;
+  height: 175px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background-color: #fff;
+  margin: -87.5px auto 20px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+.profile-view .profile-photo .photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Update sidebar photo to 100x100 */
+.sidebar .profile-avatar {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background-color: #fff;
+  margin: -50px auto 12px;
+  overflow: hidden;
+}
+
+.sidebar .profile-avatar .avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Center the profile info */
+.profile-view .profile-info {
+  position: relative;
+  z-index: 2;
+  background-color: transparent;
+  padding-top: 0;
+}
+
+/* Profile Edit Styles */
+.profile-edit {
+  background-color: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+/* Cover and Photo Section */
+.profile-cover-edit {
+  position: relative;
+  height: 200px;
+  margin-bottom: 100px;
+}
+
+.cover-image-container {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.edit-cover-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  padding: 8px 16px;
+  background-color: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+}
+
+.edit-cover-btn:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.profile-photo-edit {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -87.5px;
+  z-index: 5;
+}
+
+.photo-container {
+  width: 175px;
+  height: 175px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background-color: #fff;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Tabs Section */
+.profile-edit-tabs {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  border-bottom: 1px solid var(--medium-gray);
+  gap: 16px;
+  background-color: transparent;
+  box-shadow: none;
+  margin-top: 0;
+}
+
+.tab-btn {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 16px;
+  transition: background-color 0.2s;
+}
+
+.tab-btn:hover {
+  background-color: var(--light-gray);
+}
+
+.tab-btn.active {
+  color: var(--primary-color);
+  background-color: rgba(10, 102, 194, 0.1);
+}
+
+/* Content Section */
+.profile-edit-content {
+  background-color: transparent;
+  box-shadow: none;
+  padding: 24px 0;
+  margin-top: 0;
+}
+
+/* Form Styles */
+.intro-form {
+  max-width: 600px;
+  margin: 0 auto;
+  background-color: transparent;
+}
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--medium-gray);
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.2s;
+  background-color: transparent;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.form-hint {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+/* Experience, Education, and Skills Sections */
+.experience-section,
+.education-section,
+.skills-section {
+  background-color: transparent;
+  box-shadow: none;
+  margin-top: 24px;
+}
+
+/* Form Actions */
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.cancel-btn {
+  padding: 8px 24px;
+  background: none;
+  border: 1px solid var(--medium-gray);
+  border-radius: 16px;
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-btn {
+  padding: 8px 24px;
+  background-color: var(--primary-color);
+  border: none;
+  border-radius: 16px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Profile View Cover Styles */
+.profile-view .profile-cover {
+  height: 300px;
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-view .profile-cover .cover-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Adjust profile photo position to account for larger cover */
+.profile-view .profile-photo {
+  width: 175px;
+  height: 175px;
+  border-radius: 50%;
+  border: 4px solid #fff;
+  background-color: #fff;
+  margin: -87.5px auto 20px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 2;
+}
+
+/* Adjust profile info position */
+.profile-view .profile-info {
+  position: relative;
+  z-index: 2;
+  background-color: transparent;
+  padding-top: 0;
 }

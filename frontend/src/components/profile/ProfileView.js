@@ -152,29 +152,34 @@ const ProfileView = ({
           <p className="empty-text">No information provided.</p>
         )}
         {isCurrentUser && !profile?.about && (
-          <button
-            className="add-about-btn"
-            onClick={handleEditClick}
-          >
-            Add about
-          </button>
+          <div className="add-about-container">
+            <button
+              className="add-about-btn"
+              onClick={handleEditClick}
+            >
+              Add about
+            </button>
+          </div>
         )}
       </div>
 
       <ExperienceSection
         experiences={profile?.experiences || []}
-        isEditable={false}
+        isEditable={isCurrentUser}
+        onUpdate={() => {}}
       />
 
       <EducationSection
         educations={profile?.educations || []}
-        isEditable={false}
+        isEditable={isCurrentUser}
+        onUpdate={() => {}}
       />
 
       <SkillsSection
         skills={profile?.skills || []}
-        isEditable={false}
+        isEditable={isCurrentUser}
         canEndorse={!isCurrentUser}
+        onUpdate={() => {}}
       />
 
       {profile?.website && (

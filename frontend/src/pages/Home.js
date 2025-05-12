@@ -14,19 +14,24 @@ const Home = () => {
   const [totalPosts, setTotalPosts] = useState(0);
 
   useEffect(() => {
-    fetchPosts();
-  }, [page]);
+    if (user) {
+      fetchPosts();
+    }
+  }, [page, user]);
 
   const fetchPosts = async () => {
     try {
       setLoading(true);
       const response = await postService.getFeedPosts(page);
 
-      if (page === 1) {
-        setPosts(response.items);
-      } else {
-        setPosts(prevPosts => [...prevPosts, ...response.items]);
-      }
+      // Always append new posts to existing ones
+      setPosts(prevPosts => {
+        if (page === 1) {
+          return response.items;
+        } else {
+          return [...prevPosts, ...response.items];
+        }
+      });
 
       setTotalPosts(response.total);
       setHasMore(response.has_next);

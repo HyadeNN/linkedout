@@ -90,15 +90,6 @@ const SkillsSection = ({
     <div className="skills-section">
       <div className="section-header">
         <h2 className="section-title">Skills</h2>
-        {isEditable && !isAdding && (
-          <button
-            className="add-item-btn"
-            onClick={handleAddClick}
-            disabled={loading}
-          >
-            <span className="add-icon">+</span>
-          </button>
-        )}
       </div>
 
       {isAdding && (

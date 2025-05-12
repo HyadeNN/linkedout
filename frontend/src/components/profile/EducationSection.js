@@ -244,15 +244,6 @@ const EducationSection = ({
     <div className="education-section">
       <div className="section-header">
         <h2 className="section-title">Education</h2>
-        {isEditable && !isAdding && !editingId && (
-          <button
-            className="add-item-btn"
-            onClick={() => setIsAdding(true)}
-            disabled={loading}
-          >
-            <span className="add-icon">+</span>
-          </button>
-        )}
       </div>
 
       {(isAdding || editingId) && renderEducationForm()}
@@ -261,12 +252,14 @@ const EducationSection = ({
         <div className="empty-section">
           <p>Add your education</p>
           {isEditable && (
-            <button
-              className="add-education-btn"
-              onClick={() => setIsAdding(true)}
-            >
-              Add education
-            </button>
+            <div className="add-education-container">
+              <button
+                className="add-education-btn"
+                onClick={() => setIsAdding(true)}
+              >
+                Add education
+              </button>
+            </div>
           )}
         </div>
       ) : (

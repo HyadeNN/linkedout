@@ -9,6 +9,7 @@ from app.model.connection import Connection
 from app.model.notification import Notification
 from app.schema.post import PostCreate, PostUpdate, CommentCreate, CommentUpdate, LikeCreate, CommentLikeCreate
 from app.utils.helpers import save_image_with_resize
+from app.config import settings
 
 
 def get_post(db: Session, post_id: int) -> Post:
@@ -24,12 +25,14 @@ def create_post(db: Session, author_id: int, post_data: PostCreate, image: Optio
     # Handle image upload
     image_url = None
     if image:
-        image_url = save_image_with_resize(
+        image_path = save_image_with_resize(
             image,
             folder="post_images",
             max_width=1200,
             max_height=1200
         )
+        # Construct the full URL
+        image_url = f"{settings.MEDIA_URL}{image_path}"
 
     # Create post
     db_post = Post(
