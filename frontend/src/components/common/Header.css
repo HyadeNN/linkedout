@@ -1,0 +1,238 @@
+/* Header Ana Yapı */
+.nav-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 80px;
+  background: #fff;
+  box-shadow: 0 10px 40px 0 rgba(90, 120, 150, 0.06);
+  display: flex;
+  align-items: center;
+  z-index: 1000;
+  padding: 0;
+}
+
+/* Logo Bölgesi */
+.nav-logo-zone {
+  width: 130px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-right: 1px solid #f4f4f4;
+}
+.nav-logo {
+  width: 46px;
+  height: 46px;
+}
+
+/* Menü */
+.nav-menu {
+  display: flex;
+  align-items: center;
+  height: 80px;
+  margin-left: 13px;
+  border-right: 1px solid #f4f4f4;
+}
+.nav-menu-item {
+  width: 90px;
+  height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #181818;
+  font-size: 12px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s, background 0.2s;
+  cursor: pointer;
+  position: relative;
+}
+.nav-menu-item.active,
+.nav-menu-item:hover {
+  color: #0073b1;
+  background: #f7faff;
+}
+.nav-menu-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+/* Arama */
+.nav-search-zone {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 80px;
+  padding: 0 32px;
+  border-right: 1px solid #f4f4f4;
+  min-width: 300px;
+  max-width: 400px;
+}
+.nav-search-icon {
+  color: #0073b1;
+  font-size: 20px;
+  margin-right: 12px;
+}
+.nav-search-input {
+  border: none;
+  background: #f4f4f4;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: 16px;
+  width: 100%;
+  outline: none;
+  color: #222;
+  transition: box-shadow 0.2s;
+}
+.nav-search-input:focus {
+  box-shadow: 0 0 0 2px #0073b133;
+  background: #fff;
+}
+
+/* Profil Bölgesi */
+.nav-profile-zone {
+  width: 420px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px 0 30px;
+  border-right: 1px solid #f4f4f4;
+}
+.nav-profile-info {
+  display: flex;
+  align-items: center;
+}
+.nav-profile-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-right: 18px;
+  border: 2px solid #e6e6e6;
+}
+.nav-profile-texts {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.nav-profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.nav-profile-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #181818;
+}
+.nav-profile-you {
+  font-size: 13px;
+  font-weight: 700;
+  color: #18181833;
+  margin-left: 4px;
+}
+.nav-profile-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.nav-profile-views {
+  font-size: 13px;
+  color: #727272;
+}
+.nav-profile-views-change {
+  font-size: 13px;
+  color: #00b86b;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-weight: 600;
+}
+
+/* Diğer Menü */
+.nav-profile-other {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 80px;
+  cursor: pointer;
+  margin-left: 18px;
+}
+.nav-profile-other-icon {
+  font-size: 24px;
+  color: #181818;
+  margin-bottom: 4px;
+}
+.nav-profile-other-label {
+  font-size: 13px;
+  color: #181818;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .nav-profile-zone {
+    width: 320px;
+    padding: 0 10px 0 10px;
+  }
+  .nav-search-zone {
+    min-width: 180px;
+    max-width: 250px;
+    padding: 0 10px;
+  }
+  .nav-menu-item {
+    width: 70px;
+    font-size: 11px;
+  }
+}
+@media (max-width: 900px) {
+  .nav-header {
+    height: 60px;
+  }
+  .nav-logo-zone, .nav-menu, .nav-profile-zone {
+    height: 60px;
+  }
+  .nav-profile-avatar {
+    width: 32px;
+    height: 32px;
+  }
+  .nav-menu-icon {
+    font-size: 20px;
+  }
+}
+@media (max-width: 700px) {
+  .nav-header {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 0 4px;
+  }
+  .nav-logo-zone, .nav-menu, .nav-profile-zone, .nav-search-zone {
+    height: 48px;
+    min-width: unset;
+    max-width: unset;
+    padding: 0 4px;
+  }
+  .nav-profile-zone {
+    width: auto;
+    padding: 0 4px;
+  }
+  .nav-menu-item {
+    width: 48px;
+    font-size: 10px;
+  }
+  .nav-profile-name {
+    font-size: 12px;
+  }
+  .nav-profile-views, .nav-profile-views-change {
+    font-size: 11px;
+  }
+} 

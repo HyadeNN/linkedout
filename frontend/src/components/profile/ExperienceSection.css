@@ -1,0 +1,185 @@
+.experience-section {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15), 0 2px 3px rgba(0, 0, 0, 0.2);
+  padding: 24px;
+  margin-bottom: 24px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-header h2 {
+  font-size: 20px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.9);
+  margin: 0;
+}
+
+.add-button {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  border-radius: 16px;
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-button:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.75);
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.experience-form {
+  background: #f3f2ef;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.experience-form input,
+.experience-form textarea {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.experience-form textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.date-inputs {
+  display: flex;
+  gap: 8px;
+}
+
+.date-inputs input {
+  flex: 1;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.save-button,
+.cancel-button {
+  padding: 6px 16px;
+  border-radius: 16px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.save-button {
+  background: #0a66c2;
+  border: none;
+  color: #fff;
+}
+
+.save-button:hover {
+  background: #004182;
+}
+
+.cancel-button {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.cancel-button:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.75);
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.experiences-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.experience-item {
+  padding: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 8px;
+}
+
+.experience-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.experience-header h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.9);
+  margin: 0;
+}
+
+.delete-button {
+  background: none;
+  border: none;
+  color: #0a66c2;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.delete-button:hover {
+  text-decoration: underline;
+}
+
+.company {
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.75);
+  margin: 0 0 4px;
+}
+
+.location {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0 0 4px;
+}
+
+.date {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+  margin: 0 0 8px;
+}
+
+.description {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.75);
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.experience-section-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.15), 0 2px 3px rgba(0, 0, 0, 0.2);
+  font-size: 16px;
+  color: rgba(0, 0, 0, 0.6);
+} 
