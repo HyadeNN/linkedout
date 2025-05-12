@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authService } from '../services';
+import { authService, profileService } from '../services';
 import { auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -11,41 +11,58 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Helper: fetch Firestore profile and merge into user
+  const fetchAndMergeProfile = async (firebaseUser) => {
+    try {
+      const profile = await profileService.getCurrentUserProfile();
+      setUser({
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        uid: firebaseUser.uid,
+        profile, // includes profile_image
+      });
+      localStorage.setItem('user', JSON.stringify({
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        uid: firebaseUser.uid,
+        profile,
+      }));
+    } catch (e) {
+      setUser({
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        uid: firebaseUser.uid,
+      });
+      localStorage.setItem('user', JSON.stringify({
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        uid: firebaseUser.uid,
+      }));
+    }
+  };
+
   // Listen for auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // User is signed in
-        const userData = {
-          email: user.email,
-          displayName: user.displayName,
-          uid: user.uid
-        };
-        setUser(userData);
-        localStorage.setItem('user', JSON.stringify(userData));
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        fetchAndMergeProfile(firebaseUser);
       } else {
-        // User is signed out
         setUser(null);
         localStorage.removeItem('user');
       }
       setLoading(false);
     });
-
-    // Cleanup subscription
     return () => unsubscribe();
   }, []);
 
   // Login function
   const handleLogin = async (email, password) => {
     try {
-      console.log('Attempting login for:', email);
       setLoading(true);
       const result = await authService.login(email, password);
-      console.log('Login successful:', result);
-      setUser(result.user);
+      await fetchAndMergeProfile(result.user);
       return result;
     } catch (error) {
-      console.error('Login failed:', error);
       throw error;
     } finally {
       setLoading(false);
@@ -55,13 +72,11 @@ export const AuthProvider = ({ children }) => {
   // Register function
   const handleRegister = async (userData) => {
     try {
-      console.log('Attempting registration with data:', { ...userData, password: '[REDACTED]' });
       setLoading(true);
       const result = await authService.register(userData);
-      console.log('Registration successful:', result);
+      await fetchAndMergeProfile(result.user);
       return result;
     } catch (error) {
-      console.error('Registration failed:', error);
       throw error;
     } finally {
       setLoading(false);

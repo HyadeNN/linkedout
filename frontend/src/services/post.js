@@ -1,135 +1,140 @@
-import api, { getFormData } from './api';
+import { db, storage } from '../firebase';
+import { collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, deleteDoc, doc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { v4 as uuidv4 } from 'uuid';
 
 // Create a post
-export const createPost = async (content, image = null) => {
-  const formData = new FormData();
-  formData.append('content', content);
-
+export const createPost = async (userId, { content, image }) => {
+  let imageUrl = '';
   if (image) {
-    formData.append('image', image);
+    const imageRef = ref(storage, `posts/${userId}/${uuidv4()}-${image.name}`);
+    await uploadBytes(imageRef, image);
+    imageUrl = await getDownloadURL(imageRef);
   }
-
-  const response = await api.post('/posts', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
+  const docRef = await addDoc(collection(db, 'posts'), {
+    userId,
+    content,
+    imageUrl,
+    createdAt: serverTimestamp(),
   });
-  return response.data;
+  return docRef.id;
 };
 
 // Update a post
 export const updatePost = async (postId, content) => {
-  const response = await api.put(`/posts/${postId}`, { content });
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Delete a post
 export const deletePost = async (postId) => {
-  const response = await api.delete(`/posts/${postId}`);
-  return response.data;
+  await deleteDoc(doc(db, 'posts', postId));
 };
 
 // Get a post by ID
 export const getPost = async (postId) => {
-  const response = await api.get(`/posts/${postId}`);
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Get feed posts
-export const getFeedPosts = async (page = 1, limit = 20) => {
-  const response = await api.get('/posts', {
-    params: { page, limit },
-  });
-  return response.data;
+export const getFeedPosts = async () => {
+  const q = query(
+    collection(db, 'posts'),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 // Get user posts
-export const getUserPosts = async (userId, page = 1, limit = 20) => {
-  const response = await api.get(`/posts/user/${userId}`, {
-    params: { page, limit },
-  });
-  return response.data;
+export const getUserPosts = async (userId) => {
+  const q = query(
+    collection(db, 'posts'),
+    where('userId', '==', userId),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 // Search posts
 export const searchPosts = async (query, page = 1, limit = 20) => {
-  const response = await api.get('/posts/search', {
-    params: { query, page, limit },
-  });
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Create a comment
-export const createComment = async (postId, content) => {
-  const response = await api.post(`/posts/${postId}/comments`, {
-    post_id: postId,
+export const createComment = async (postId, userId, content) => {
+  const docRef = await addDoc(collection(db, 'comments'), {
+    postId,
+    userId,
     content,
+    createdAt: serverTimestamp()
   });
-  return response.data;
+  return docRef.id;
 };
 
 // Update a comment
 export const updateComment = async (commentId, content) => {
-  const response = await api.put(`/posts/comments/${commentId}`, { content });
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Delete a comment
 export const deleteComment = async (commentId) => {
-  const response = await api.delete(`/posts/comments/${commentId}`);
-  return response.data;
+  await deleteDoc(doc(db, 'comments', commentId));
 };
 
 // Get post comments
-export const getPostComments = async (postId, page = 1, limit = 50) => {
-  const response = await api.get(`/posts/${postId}/comments`, {
-    params: { page, limit },
-  });
-  return response.data;
+export const getComments = async (postId) => {
+  const q = query(
+    collection(db, 'comments'),
+    where('postId', '==', postId),
+    orderBy('createdAt', 'desc')
+  );
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
 // Like a post
 export const likePost = async (postId) => {
-  const response = await api.post(`/posts/${postId}/like`);
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Unlike a post
 export const unlikePost = async (postId) => {
-  const response = await api.delete(`/posts/${postId}/like`);
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Like a comment
 export const likeComment = async (commentId) => {
-  const response = await api.post(`/posts/comments/${commentId}/like`);
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Unlike a comment
 export const unlikeComment = async (commentId) => {
-  const response = await api.delete(`/posts/comments/${commentId}/like`);
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Get post likes
 export const getPostLikes = async (postId, page = 1, limit = 50) => {
-  const response = await api.get(`/posts/${postId}/likes`, {
-    params: { page, limit },
-  });
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Get comment likes
 export const getCommentLikes = async (commentId, page = 1, limit = 50) => {
-  const response = await api.get(`/posts/comments/${commentId}/likes`, {
-    params: { page, limit },
-  });
-  return response.data;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };
 
 // Check if post is liked
 export const isPostLiked = async (postId) => {
-  const response = await api.get(`/posts/${postId}/is-liked`);
-  return response.data.is_liked;
+  // Implementation needed
+  throw new Error('Method not implemented');
 };

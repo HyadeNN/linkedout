@@ -14,8 +14,10 @@ const EditProfile = () => {
     about: '',
     location: '',
     phone_number: '',
-    website: ''
+    website: '',
+    profile_image: ''
   });
+  const [imagePreview, setImagePreview] = useState(null);
 
   // Fetch user profile
   useEffect(() => {
@@ -24,18 +26,17 @@ const EditProfile = () => {
         setLoading(true);
         const profileData = await profileService.getCurrentUserProfile();
         setProfile(profileData);
-
-        // Set form data from profile
         setFormData({
           headline: profileData.headline || '',
           about: profileData.about || '',
           location: profileData.location || '',
           phone_number: profileData.phone_number || '',
-          website: profileData.website || ''
+          website: profileData.website || '',
+          profile_image: profileData.profile_image || ''
         });
+        setImagePreview(profileData.profile_image || '');
       } catch (error) {
         console.error('Failed to fetch profile:', error);
-        // If profile doesn't exist, we'll create a new one
         if (error.response && error.response.status === 404) {
           setProfile(null);
         }
@@ -43,7 +44,6 @@ const EditProfile = () => {
         setLoading(false);
       }
     };
-
     fetchProfile();
   }, [user]);
 
@@ -56,21 +56,26 @@ const EditProfile = () => {
     }));
   };
 
+  // Handle profile image change
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
+      try {
+        const url = await profileService.uploadProfileImage(file);
+        setFormData(prev => ({ ...prev, profile_image: url }));
+      } catch (error) {
+        alert('Failed to upload image.');
+      }
+    }
+  };
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     try {
       setSaving(true);
-
-      if (profile) {
-        // Update existing profile
-        await profileService.updateProfile(formData);
-      } else {
-        // Create new profile
-        await profileService.updateProfile(formData);
-      }
-
+      await profileService.updateProfile(formData);
       navigate('/profile');
     } catch (error) {
       console.error('Failed to save profile:', error);
@@ -88,101 +93,68 @@ const EditProfile = () => {
     <div className="edit-profile-page">
       <div className="edit-profile-container">
         <h1 className="page-title">Edit Profile</h1>
-
         <form onSubmit={handleSubmit} className="edit-profile-form">
-          <div className="form-section">
-            <h2 className="section-title">Intro</h2>
-
-            <div className="form-group">
-              <label htmlFor="headline">Headline</label>
+          <div style={{ marginBottom: 24, textAlign: 'center' }}>
+            <img
+              src={imagePreview || ''}
+              alt="Profile Preview"
+              style={{ width: 120, height: 120, borderRadius: '50%', objectFit: 'cover', marginBottom: 8 }}
+            />
+            <div>
               <input
-                type="text"
-                id="headline"
-                name="headline"
-                value={formData.headline}
-                onChange={handleChange}
-                placeholder="Your professional headline"
-                disabled={saving}
+                type="file"
+                accept="image/*"
+                id="profile-image-upload"
+                style={{ display: 'none' }}
+                onChange={handleImageChange}
               />
-              <p className="form-hint">Add a headline that describes your professional role or expertise.</p>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="about">About</label>
-              <textarea
-                id="about"
-                name="about"
-                value={formData.about}
-                onChange={handleChange}
-                placeholder="Write a summary about yourself"
-                rows={5}
-                disabled={saving}
-              />
-              <p className="form-hint">Describe your experience, skills and accomplishments.</p>
+              <label htmlFor="profile-image-upload" style={{ cursor: 'pointer', color: '#0077b5', fontWeight: 600 }}>
+                Change Profile Photo
+              </label>
             </div>
           </div>
-
-          <div className="form-section">
-            <h2 className="section-title">Contact Information</h2>
-
-            <div className="form-group">
-              <label htmlFor="location">Location</label>
-              <input
-                type="text"
-                id="location"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                placeholder="City, Country"
-                disabled={saving}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="phone_number">Phone Number</label>
-              <input
-                type="tel"
-                id="phone_number"
-                name="phone_number"
-                value={formData.phone_number}
-                onChange={handleChange}
-                placeholder="Your phone number"
-                disabled={saving}
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="website">Website</label>
-              <input
-                type="url"
-                id="website"
-                name="website"
-                value={formData.website}
-                onChange={handleChange}
-                placeholder="Your website or portfolio"
-                disabled={saving}
-              />
-            </div>
-          </div>
-
-          <div className="form-actions">
-            <button
-              type="button"
-              className="cancel-button"
-              onClick={() => navigate('/profile')}
-              disabled={saving}
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              className="save-button"
-              disabled={saving}
-            >
-              {saving ? 'Saving...' : 'Save'}
-            </button>
-          </div>
+          <input
+            type="text"
+            name="headline"
+            value={formData.headline}
+            onChange={handleChange}
+            placeholder="Headline"
+            className="form-input"
+          />
+          <textarea
+            name="about"
+            value={formData.about}
+            onChange={handleChange}
+            placeholder="About"
+            className="form-input"
+          />
+          <input
+            type="text"
+            name="location"
+            value={formData.location}
+            onChange={handleChange}
+            placeholder="Location"
+            className="form-input"
+          />
+          <input
+            type="text"
+            name="phone_number"
+            value={formData.phone_number}
+            onChange={handleChange}
+            placeholder="Phone Number"
+            className="form-input"
+          />
+          <input
+            type="text"
+            name="website"
+            value={formData.website}
+            onChange={handleChange}
+            placeholder="Website"
+            className="form-input"
+          />
+          <button type="submit" className="save-btn" disabled={saving}>
+            {saving ? 'Saving...' : 'Save Profile'}
+          </button>
         </form>
       </div>
     </div>

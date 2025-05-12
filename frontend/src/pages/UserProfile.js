@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { userService, profileService, connectionService, postService } from '../services';
 import { useAuth } from '../contexts/AuthContext';
 import PostList from '../components/feed/PostList';
+import { getUserById } from '../services/user';
 
 const UserProfile = () => {
   const { userId } = useParams();
@@ -16,7 +17,7 @@ const UserProfile = () => {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState('posts');
   const [page, setPage] = useState(1);
@@ -30,9 +31,8 @@ const UserProfile = () => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
-
-        // Get user data
-        const userData = await userService.getUserById(userId);
+        setError('');
+        const userData = await getUserById(userId);
         setUser(userData);
 
         // Get profile data
@@ -53,9 +53,8 @@ const UserProfile = () => {
           setMutualConnections(mutualData.items);
           setMutualCount(mutualData.total);
         }
-      } catch (error) {
-        console.error('Failed to fetch user data:', error);
-        setError('Failed to load user profile. Please try again.');
+      } catch (err) {
+        setError('Kullanıcı bulunamadı veya yüklenemedi.');
       } finally {
         setLoading(false);
       }
@@ -189,297 +188,147 @@ const UserProfile = () => {
     setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
   };
 
-  if (loading) {
-    return <div className="loading-indicator">Loading profile...</div>;
-  }
-
-  if (error) {
-    return (
-      <div className="error-container">
-        <p className="error-message">{error}</p>
-        <Link to="/" className="back-link">Back to Home</Link>
-      </div>
-    );
-  }
-
-  if (!user || !profile) {
-    return (
-      <div className="error-container">
-        <p className="error-message">User not found.</p>
-        <Link to="/" className="back-link">Back to Home</Link>
-      </div>
-    );
-  }
+  if (loading) return <div>Yükleniyor...</div>;
+  if (error) return <div className="error-message">{error}</div>;
+  if (!user) return null;
 
   return (
-    <div className="user-profile-page">
-      <div className="profile-header">
-        <div className="profile-cover">
-          <img
-            src={profile.cover_image || '/default-cover.jpg'}
-            alt="Cover"
-            className="cover-image"
-          />
-        </div>
-
-        <div className="profile-info">
-          <div className="profile-photo">
-            <img
-              src={profile.profile_image || '/default-avatar.jpg'}
-              alt={`${user.first_name} ${user.last_name}`}
-              className="photo"
-            />
-          </div>
-
-          <div className="profile-details">
-            <h1 className="profile-name">{user.first_name} {user.last_name}</h1>
-            <p className="profile-headline">{profile.headline || 'No headline'}</p>
-            <p className="profile-location">{profile.location || 'No location'}</p>
-
-            {!isOwnProfile && mutualCount > 0 && (
-              <p className="mutual-connections">
-                {mutualCount} mutual connection{mutualCount !== 1 ? 's' : ''}
-              </p>
-            )}
-          </div>
-
-          <div className="profile-actions">
-            {isOwnProfile ? (
-              <Link to="/profile/edit" className="edit-profile-btn">
-                Edit Profile
-              </Link>
-            ) : (
-              <>
-                {connectionStatus && connectionStatus.status === 'pending' && !connectionStatus.is_sender ? (
-                  <div className="connection-response-buttons">
-                    <button
-                      className="accept-btn"
-                      onClick={() => handleConnectionResponse(true)}
-                      disabled={actionLoading}
-                    >
-                      Accept
-                    </button>
-                    <button
-                      className="reject-btn"
-                      onClick={() => handleConnectionResponse(false)}
-                      disabled={actionLoading}
-                    >
-                      Ignore
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    className={`connect-btn ${connectionStatus && connectionStatus.status !== 'none' ? 'connected' : ''}`}
-                    onClick={handleConnectionAction}
-                    disabled={actionLoading}
-                  >
-                    {!connectionStatus || connectionStatus.status === 'none'
-                      ? 'Connect'
-                      : connectionStatus.status === 'pending' && connectionStatus.is_sender
-                      ? 'Pending'
-                      : 'Connected'}
-                  </button>
-                )}
-
-                <button
-                  className={`follow-btn ${isFollowing ? 'following' : ''}`}
-                  onClick={handleFollowAction}
-                  disabled={actionLoading}
-                >
-                  {isFollowing ? 'Following' : 'Follow'}
-                </button>
-
-                <button className="message-btn" disabled={actionLoading}>
-                  Message
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+    <div className="user-profile-figma-bg">
+      <div className="top-bar">
+        <h1>User Profile</h1>
       </div>
-
-      <div className="profile-body">
-        <div className="profile-content">
-          <div className="profile-section about-section">
-            <h2 className="section-title">About</h2>
-            <p className="about-text">
-              {profile.about || 'No information provided.'}
-            </p>
+      <div className="user-profile-figma-container">
+        {/* Profile Main Card */}
+        <div className="profile-main-card profile-header-modern">
+          <div className="profile-cover-figma cover-image-modern">
+            <img src={user.profile?.cover_image || "/default-cover.jpg"} alt="Cover" />
           </div>
-
-          {profile.experiences && profile.experiences.length > 0 && (
-            <div className="profile-section experience-section">
-              <h2 className="section-title">Experience</h2>
-              <div className="experience-list">
-                {profile.experiences.map(experience => (
-                  <div key={experience.id} className="experience-item">
-                    <div className="experience-logo">
-                      <div className="company-logo-placeholder"></div>
-                    </div>
-                    <div className="experience-details">
-                      <h3 className="experience-title">{experience.title}</h3>
-                      <p className="experience-company">{experience.company}</p>
-                      <p className="experience-date">
-                        {new Date(experience.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })} -
-                        {experience.is_current
-                          ? ' Present'
-                          : experience.end_date ? ` ${new Date(experience.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}` : ''}
-                      </p>
-                      <p className="experience-location">{experience.location}</p>
-                      {experience.description && (
-                        <p className="experience-description">{experience.description}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+          <div className="profile-photo-figma profile-picture-modern">
+            <img src={user.profile?.profile_image || "/default-avatar.jpg"} alt={user.profile?.first_name || user.first_name} />
+          </div>
+          <div className="profile-info-figma profile-info-modern">
+            <div className="profile-name-row name-section-modern">
+              <span className="profile-name-figma profile-name-modern">
+                {user.profile?.first_name || user.first_name} {user.profile?.last_name || user.last_name}
+              </span>
             </div>
-          )}
-
-          {profile.educations && profile.educations.length > 0 && (
-            <div className="profile-section education-section">
-              <h2 className="section-title">Education</h2>
-              <div className="education-list">
-                {profile.educations.map(education => (
-                  <div key={education.id} className="education-item">
-                    <div className="education-logo">
-                      <div className="school-logo-placeholder"></div>
-                    </div>
-                    <div className="education-details">
-                      <h3 className="education-school">{education.school}</h3>
-                      <p className="education-degree">
-                        {education.degree}{education.field_of_study ? `, ${education.field_of_study}` : ''}
-                      </p>
-                      <p className="education-date">
-                        {new Date(education.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })} -
-                        {education.is_current
-                          ? ' Present'
-                          : education.end_date ? ` ${new Date(education.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}` : ''}
-                      </p>
-                      {education.description && (
-                        <p className="education-description">{education.description}</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {profile.skills && profile.skills.length > 0 && (
-            <div className="profile-section skills-section">
-              <h2 className="section-title">Skills</h2>
-              <div className="skills-list">
-                {profile.skills.map(skill => (
-                  <div key={skill.id} className="skill-item">
-                    <span className="skill-name">{skill.name}</span>
-                    {skill.endorsement_count > 0 && (
-                      <span className="endorsement-count">{skill.endorsement_count}</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="profile-section posts-section">
-            <div className="section-tabs">
-              <button
-                className={`tab-btn ${selectedTab === 'posts' ? 'active' : ''}`}
-                onClick={() => handleTabChange('posts')}
-              >
-                Posts
+            {profile?.headline && <div className="profile-headline-figma profile-headline-modern">{profile.headline}</div>}
+            {profile?.location && <div className="profile-location-figma location-modern">{profile.location}</div>}
+            {profile?.bio && <div className="profile-bio-figma bio-input-modern">{profile.bio}</div>}
+            <div className="profile-actions-modern" style={{ marginTop: 18 }}>
+              <button className="action-button-modern secondary">
+                {profile?.email || user?.email || 'Contact info'}
               </button>
-              <button
-                className={`tab-btn ${selectedTab === 'activity' ? 'active' : ''}`}
-                onClick={() => handleTabChange('activity')}
-              >
-                Activity
+              <button className="action-button-modern secondary">
+                {typeof mutualCount === 'number' ? `${mutualCount} connections` : 'Connections'}
               </button>
             </div>
-
-            {selectedTab === 'posts' && (
-              <>
-                {postsLoading && posts.length === 0 ? (
-                  <div className="loading-indicator">Loading posts...</div>
-                ) : posts.length === 0 ? (
-                  <div className="empty-posts">
-                    <p>No posts yet</p>
-                  </div>
-                ) : (
-                  <>
-                    <PostList
-                      posts={posts}
-                      onUpdatePost={handleUpdatePost}
-                      onDeletePost={handleDeletePost}
-                    />
-
-                    {hasMore && (
-                      <button
-                        className="load-more-btn"
-                        onClick={handleLoadMore}
-                        disabled={postsLoading}
-                      >
-                        {postsLoading ? 'Loading...' : 'Load More'}
-                      </button>
-                    )}
-                  </>
-                )}
-              </>
+          </div>
+          {/* Tab Bar */}
+          <div className="profile-tabs-bar">
+            <button className="profile-tab active">Profile</button>
+            <button className="profile-tab">Activity & Interests</button>
+            <button className="profile-tab">Articles</button>
+          </div>
+        </div>
+        {/* About Card */}
+        <div className="profile-wide-card">
+          <h2 className="section-title">About</h2>
+          <p className="about-text">
+            {profile?.about ? profile.about : 'No information provided.'}
+          </p>
+        </div>
+        {/* Posts Card */}
+        <div className="profile-wide-card">
+          <h2 className="section-title">Posts</h2>
+          <div>
+            <PostList
+              posts={posts}
+              loading={postsLoading}
+              onUpdatePost={handleUpdatePost}
+              onDeletePost={handleDeletePost}
+              isOwnProfile={isOwnProfile}
+              showUser={false}
+            />
+            {!postsLoading && posts.length === 0 && (
+              <div className="empty-section">No post added yet.</div>
             )}
-
-            {selectedTab === 'activity' && (
-              <div className="activity-content">
-                <p>Recent activity will be shown here.</p>
-              </div>
+            {posts.length > 0 && hasMore && !postsLoading && (
+              <button className="load-more-btn" onClick={handleLoadMore}>
+                Load More
+              </button>
             )}
           </div>
         </div>
-
-        <div className="profile-sidebar">
-          {!isOwnProfile && mutualConnections.length > 0 && (
-            <div className="sidebar-section mutual-section">
-              <h3 className="sidebar-title">Mutual Connections</h3>
-              <div className="mutual-list">
-                {mutualConnections.map(mutual => (
-                  <Link key={mutual.id} to={`/users/${mutual.id}`} className="mutual-item">
-                    <img
-                      src={mutual.profile?.profile_image || '/default-avatar.jpg'}
-                      alt={`${mutual.first_name} ${mutual.last_name}`}
-                      className="mutual-avatar"
-                    />
-                    <span className="mutual-name">{mutual.first_name} {mutual.last_name}</span>
-                  </Link>
-                ))}
-
-                {mutualCount > mutualConnections.length && (
-                  <Link to={`/connections/mutual/${userId}`} className="view-all-link">
-                    View all {mutualCount} mutual connections
-                  </Link>
-                )}
-              </div>
+        {/* Experience Card */}
+        <div className="profile-wide-card">
+          <h2 className="section-title">Experience</h2>
+          {profile?.experiences && profile.experiences.length > 0 ? (
+            <div className="experience-list">
+              {profile.experiences.map(exp => (
+                <div key={exp.id} className="experience-mini-card">
+                  <div className="experience-logo">
+                    <div className="company-logo-placeholder"></div>
+                  </div>
+                  <div className="experience-details">
+                    <h3 className="experience-title">{exp.title}</h3>
+                    <p className="experience-company">{exp.company}</p>
+                    <p className="experience-date">
+                      {new Date(exp.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })} -
+                      {exp.is_current ? ' Present' : exp.end_date ? ` ${new Date(exp.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}` : ''}
+                    </p>
+                    <p className="experience-location">{exp.location}</p>
+                    {exp.description && <p className="experience-description">{exp.description}</p>}
+                  </div>
+                </div>
+              ))}
             </div>
+          ) : (
+            <p className="empty-section">No experience added yet.</p>
           )}
-
-          {profile.website && (
-            <div className="sidebar-section contact-section">
-              <h3 className="sidebar-title">Contact</h3>
-              <div className="contact-info">
-                <p className="website">
-                  <span className="contact-label">Website:</span>
-                  <a href={profile.website} target="_blank" rel="noopener noreferrer" className="contact-value">
-                    {profile.website}
-                  </a>
-                </p>
-
-                {profile.phone_number && (
-                  <p className="phone">
-                    <span className="contact-label">Phone:</span>
-                    <span className="contact-value">{profile.phone_number}</span>
-                  </p>
-                )}
-              </div>
+        </div>
+        {/* Education Card */}
+        <div className="profile-wide-card">
+          <h2 className="section-title">Education</h2>
+          {profile?.educations && profile.educations.length > 0 ? (
+            <div className="education-list">
+              {profile.educations.map(edu => (
+                <div key={edu.id} className="education-mini-card">
+                  <div className="education-logo">
+                    <div className="school-logo-placeholder"></div>
+                  </div>
+                  <div className="education-details">
+                    <h3 className="education-school">{edu.school}</h3>
+                    <p className="education-degree">{edu.degree}{edu.field_of_study ? `, ${edu.field_of_study}` : ''}</p>
+                    <p className="education-date">
+                      {new Date(edu.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })} -
+                      {edu.is_current ? ' Present' : edu.end_date ? ` ${new Date(edu.end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })}` : ''}
+                    </p>
+                    {edu.description && <p className="education-description">{edu.description}</p>}
+                  </div>
+                </div>
+              ))}
             </div>
+          ) : (
+            <p className="empty-section">No education added yet.</p>
+          )}
+        </div>
+        {/* Skills Card */}
+        <div className="profile-wide-card">
+          <h2 className="section-title">Skills</h2>
+          {profile?.skills && profile.skills.length > 0 ? (
+            <div className="skills-list">
+              {profile.skills.map(skill => (
+                <div key={skill.id} className="skill-item">
+                  <span className="skill-name">{skill.name}</span>
+                  {skill.endorsement_count > 0 && (
+                    <span className="endorsement-count">{skill.endorsement_count}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="empty-section">No skills added yet.</p>
           )}
         </div>
       </div>

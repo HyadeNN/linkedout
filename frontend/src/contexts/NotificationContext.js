@@ -1,40 +1,40 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { notificationService } from '../services';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { getUnreadCount, getNotifications, markAsRead, markAllAsRead, deleteNotification } from '../services/notification';
 
 // Create Notification Context
 const NotificationContext = createContext();
 
 // Notification Provider
 export const NotificationProvider = ({ children }) => {
+  const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const { isAuthenticated } = useAuth();
 
   // Fetch notifications when user is authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (user) {
       fetchNotifications();
       fetchUnreadCount();
 
       // Set up interval to check for new notifications
       const interval = setInterval(() => {
         fetchUnreadCount();
-      }, 60000); // Check every minute
+      }, 30000); // Check every 30 seconds
 
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated]);
+  }, [user]);
 
   // Fetch notifications
-  const fetchNotifications = async (page = 1, limit = 20) => {
-    if (!isAuthenticated) return;
+  const fetchNotifications = async () => {
+    if (!user) return;
 
     try {
       setLoading(true);
-      const response = await notificationService.getNotifications(page, limit);
-      setNotifications(response.items);
+      const data = await getNotifications(user.uid);
+      setNotifications(data);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
     } finally {
@@ -44,10 +44,10 @@ export const NotificationProvider = ({ children }) => {
 
   // Fetch unread count
   const fetchUnreadCount = async () => {
-    if (!isAuthenticated) return;
+    if (!user) return;
 
     try {
-      const count = await notificationService.getUnreadCount();
+      const count = await getUnreadCount(user.uid);
       setUnreadCount(count);
     } catch (error) {
       console.error('Failed to fetch unread count:', error);
@@ -55,15 +55,15 @@ export const NotificationProvider = ({ children }) => {
   };
 
   // Mark notification as read
-  const markAsRead = async (notificationId) => {
+  const handleMarkAsRead = async (notificationId) => {
     try {
-      await notificationService.markAsRead(notificationId);
+      await markAsRead(notificationId);
 
       // Update local state
       setNotifications(prevNotifications =>
         prevNotifications.map(notification =>
           notification.id === notificationId
-            ? { ...notification, is_read: true }
+            ? { ...notification, isRead: true }
             : notification
         )
       );
@@ -76,13 +76,13 @@ export const NotificationProvider = ({ children }) => {
   };
 
   // Mark all notifications as read
-  const markAllAsRead = async () => {
+  const handleMarkAllAsRead = async () => {
     try {
-      await notificationService.markAllAsRead();
+      await markAllAsRead(user.uid);
 
       // Update local state
       setNotifications(prevNotifications =>
-        prevNotifications.map(notification => ({ ...notification, is_read: true }))
+        prevNotifications.map(notification => ({ ...notification, isRead: true }))
       );
 
       // Update unread count
@@ -93,9 +93,9 @@ export const NotificationProvider = ({ children }) => {
   };
 
   // Delete notification
-  const deleteNotification = async (notificationId) => {
+  const handleDeleteNotification = async (notificationId) => {
     try {
-      await notificationService.deleteNotification(notificationId);
+      await deleteNotification(notificationId);
 
       // Update local state
       const updatedNotifications = notifications.filter(
@@ -105,7 +105,7 @@ export const NotificationProvider = ({ children }) => {
 
       // Update unread count if needed
       const deletedNotification = notifications.find(n => n.id === notificationId);
-      if (deletedNotification && !deletedNotification.is_read) {
+      if (deletedNotification && !deletedNotification.isRead) {
         setUnreadCount(prevCount => Math.max(0, prevCount - 1));
       }
     } catch (error) {
@@ -114,19 +114,20 @@ export const NotificationProvider = ({ children }) => {
   };
 
   // Context value
-  const notificationContextValue = {
+  const value = {
     notifications,
     unreadCount,
     loading,
     fetchNotifications,
     fetchUnreadCount,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
+    markAsRead: handleMarkAsRead,
+    markAllAsRead: handleMarkAllAsRead,
+    deleteNotification: handleDeleteNotification,
+    setUnreadCount
   };
 
   return (
-    <NotificationContext.Provider value={notificationContextValue}>
+    <NotificationContext.Provider value={value}>
       {children}
     </NotificationContext.Provider>
   );

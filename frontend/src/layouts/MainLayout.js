@@ -37,7 +37,7 @@ const MainLayout = ({ children }) => {
       />
 
       <div className="main-container">
-        <Sidebar />
+        {!(location.pathname.startsWith('/network') || location.pathname.startsWith('/jobs')) && <Sidebar />}
 
         <main className="content">
           {children}

@@ -36,61 +36,34 @@ const Sidebar = () => {
   }
 
   return (
-    <aside className="sidebar">
-      <div className="profile-card">
-        <div className="profile-cover">
-          <img
-            src={profile?.cover_image || '/default-cover.jpg'}
-            alt="Cover"
-            className="cover-image"
-          />
-        </div>
-        <div className="profile-details">
-          <div className="profile-avatar">
-            <img
-              src={profile?.profile_image || '/default-avatar.jpg'}
-              alt={`${user?.first_name} ${user?.last_name}`}
-              className="avatar-image"
-            />
-          </div>
-          <h2 className="profile-name">
-            <Link to="/profile">{user?.first_name} {user?.last_name}</Link>
-          </h2>
-          <p className="profile-headline">{profile?.headline || 'No headline set'}</p>
-        </div>
-        <div className="profile-stats">
-          <div className="stats-item">
-            <span className="stats-label">Profile views</span>
-            <span className="stats-value">147</span>
-          </div>
-          <div className="stats-item">
-            <Link to="/network" className="stats-label">Connections</Link>
-            <span className="stats-value">{connectionCount}</span>
-          </div>
-          <div className="stats-item">
-            <span className="stats-label">Post impressions</span>
-            <span className="stats-value">632</span>
-          </div>
-        </div>
-        <div className="profile-actions">
-          <Link to="/profile" className="view-profile-btn">View Profile</Link>
-        </div>
-      </div>
-      <div className="recent-card">
+    <aside className="sidebar sidebar-modern sticky-sidebar">
+      <div className="recent-card modern-card long-card">
         <h3>Recent</h3>
-        <ul className="recent-list">
+        <ul className="recent-list long-list">
           <li><a href="#">#javascript</a></li>
+          <li><a href="#">#react</a></li>
+          <li><a href="#">#firebase</a></li>
           <li><a href="#">Remote Jobs</a></li>
           <li><a href="#">Full Stack Development</a></li>
           <li><a href="#">Web Design</a></li>
           <li><a href="#">Product Management</a></li>
+          <li><a href="#">AI & ML</a></li>
+          <li><a href="#">Cloud Computing</a></li>
+          <li><a href="#">Career Advice</a></li>
         </ul>
         <div className="groups-section">
           <h3>Groups</h3>
-          <ul className="groups-list">
+          <ul className="groups-list long-list">
             <li><a href="#">Python Developers</a></li>
             <li><a href="#">UX/UI Design Professionals</a></li>
             <li><a href="#">React Community</a></li>
+            <li><a href="#">Frontend Masters</a></li>
+            <li><a href="#">Remote Workers</a></li>
+            <li><a href="#">Women in Tech</a></li>
+            <li><a href="#">Startup Founders</a></li>
+            <li><a href="#">Product Designers</a></li>
+            <li><a href="#">Web3 Enthusiasts</a></li>
+            <li><a href="#">Community Leaders</a></li>
           </ul>
         </div>
         <a href="#" className="discover-more">Discover More</a>

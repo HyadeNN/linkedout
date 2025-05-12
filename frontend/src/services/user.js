@@ -1,4 +1,6 @@
 import api from './api';
+import { db } from '../firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 // Get current user
 export const getCurrentUserProfile = async () => {
@@ -39,10 +41,17 @@ export const deactivateAccount = async () => {
   return response.data;
 };
 
-// Get user by ID
+// Get user by ID from Firestore
 export const getUserById = async (userId) => {
-  const response = await api.get(`/users/${userId}`);
-  return response.data;
+  const userRef = doc(db, 'users', userId);
+  const userSnap = await getDoc(userRef);
+  if (!userSnap.exists()) throw new Error('User not found');
+  const data = userSnap.data();
+  return {
+    id: userSnap.id,
+    ...data,
+    profile: data.profile || {},
+  };
 };
 
 // Search users

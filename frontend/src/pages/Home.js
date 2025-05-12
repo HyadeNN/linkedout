@@ -1,158 +1,156 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { postService } from '../services';
-import NewPost from '../components/feed/NewPost';
-import PostList from '../components/feed/PostList';
+import CommentSection from '../components/feed/CommentSection';
+import './Home.css';
+
+// Yardımcı fonksiyon: Firestore Timestamp, string veya number'ı Date'e çevir
+function getValidDate(date) {
+  if (!date) return null;
+  if (typeof date.toDate === 'function') return date.toDate();
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 const Home = () => {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
-  const [totalPosts, setTotalPosts] = useState(0);
+  const [error, setError] = useState('');
+  const [commentForms, setCommentForms] = useState({});
+  const [commentErrors, setCommentErrors] = useState({});
 
   useEffect(() => {
     fetchPosts();
-  }, [page]);
+  }, []);
 
   const fetchPosts = async () => {
     try {
       setLoading(true);
-      const response = await postService.getFeedPosts(page);
-
-      if (page === 1) {
-        setPosts(response.items);
-      } else {
-        setPosts(prevPosts => [...prevPosts, ...response.items]);
-      }
-
-      setTotalPosts(response.total);
-      setHasMore(response.has_next);
+      const data = await postService.getFeedPosts();
+      setPosts(data || []);
     } catch (error) {
-      console.error('Failed to fetch posts:', error);
+      setError('Gönderiler yüklenirken bir hata oluştu.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLoadMore = () => {
-    if (hasMore && !loading) {
-      setPage(prevPage => prevPage + 1);
+  const handleCommentChange = (postId, value) => {
+    setCommentForms(prev => ({
+      ...prev,
+      [postId]: value
+    }));
+  };
+
+  const handleAddComment = async (postId) => {
+    const content = commentForms[postId];
+    if (!content?.trim()) return;
+
+    try {
+      setCommentErrors(prev => ({ ...prev, [postId]: '' }));
+      const newComment = await postService.createComment(postId, {
+        content: content.trim()
+      });
+
+      // Update posts to include the new comment
+      setPosts(prevPosts => 
+        prevPosts.map(post => 
+          post.id === postId 
+            ? { ...post, comments: [...(post.comments || []), newComment] }
+            : post
+        )
+      );
+
+      // Clear comment form
+      setCommentForms(prev => ({ ...prev, [postId]: '' }));
+    } catch (error) {
+      setCommentErrors(prev => ({
+        ...prev,
+        [postId]: 'Yorum eklenirken bir hata oluştu.'
+      }));
     }
   };
 
-  const handleNewPost = (newPost) => {
-    setPosts(prevPosts => [newPost, ...prevPosts]);
-    setTotalPosts(prevCount => prevCount + 1);
+  const handleDeleteComment = async (postId, commentId) => {
+    try {
+      await postService.deleteComment(commentId);
+      
+      // Update posts to remove the deleted comment
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.id === postId
+            ? {
+                ...post,
+                comments: post.comments.filter(comment => comment.id !== commentId)
+              }
+            : post
+        )
+      );
+    } catch (error) {
+      setError('Yorum silinirken bir hata oluştu.');
+    }
   };
 
-  const handleUpdatePost = (updatedPost) => {
-    setPosts(prevPosts =>
-      prevPosts.map(post =>
-        post.id === updatedPost.id ? updatedPost : post
-      )
-    );
-  };
+  if (loading) {
+    return <div className="loading">Gönderiler yükleniyor...</div>;
+  }
 
-  const handleDeletePost = (postId) => {
-    setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
-    setTotalPosts(prevCount => prevCount - 1);
-  };
+  if (error) {
+    return <div className="error-message">{error}</div>;
+  }
 
   return (
     <div className="home-page">
       <div className="feed-container">
-        <NewPost onPostCreated={handleNewPost} />
-
-        <div className="feed-filters">
-          <div className="filter-tabs">
-            <button className="filter-tab active">All Posts</button>
-            <button className="filter-tab">Recent</button>
-            <button className="filter-tab">Popular</button>
-          </div>
-        </div>
-
-        {loading && posts.length === 0 ? (
-          <div className="loading-indicator">Loading posts...</div>
-        ) : posts.length === 0 ? (
-          <div className="empty-feed">
-            <h3>No posts yet</h3>
-            <p>
-              Connect with other professionals to see their updates in your feed.
-            </p>
-            <Link to="/network" className="find-connections-btn">
-              Find Connections
+        {posts.length === 0 ? (
+          <div className="no-posts">
+            <p>Henüz hiç gönderi yok.</p>
+            <Link to="/profile" className="create-post-link">
+              İlk gönderiyi paylaş
             </Link>
           </div>
         ) : (
-          <>
-            <PostList
-              posts={posts}
-              onUpdatePost={handleUpdatePost}
-              onDeletePost={handleDeletePost}
-            />
+          posts.map(post => {
+            const createdAtDate = getValidDate(post.createdAt);
+            return (
+              <div key={post.id} className="post-card">
+                <div className="post-header">
+                  <Link to={`/users/${post.userId}`} className="post-author">
+                    <img
+                      src={post.author?.profile?.profile_image || '/default-avatar.jpg'}
+                      alt={`${post.author?.first_name} ${post.author?.last_name}`}
+                      className="author-avatar"
+                    />
+                    <div className="author-info">
+                      <span className="author-name">
+                        {post.author?.first_name} {post.author?.last_name}
+                      </span>
+                      <span className="post-date">
+                        {createdAtDate ? formatDistanceToNow(createdAtDate, { addSuffix: true }) : ''}
+                      </span>
+                    </div>
+                  </Link>
+                </div>
 
-            {hasMore && (
-              <button
-                className="load-more-btn"
-                onClick={handleLoadMore}
-                disabled={loading}
-              >
-                {loading ? 'Loading...' : 'Load More'}
-              </button>
-            )}
-          </>
+                <div className="post-content">
+                  <p className="post-text">{post.content}</p>
+                  {post.imageUrl && (
+                    <img src={post.imageUrl} alt="Post" className="post-image" />
+                  )}
+                </div>
+
+                <CommentSection
+                  postId={post.id}
+                  onCommentAdded={() => fetchPosts()}
+                  onCommentDeleted={() => fetchPosts()}
+                />
+              </div>
+            );
+          })
         )}
-      </div>
-
-      <div className="home-sidebar">
-        <div className="news-card">
-          <h3>LinkedOut News</h3>
-          <ul className="news-list">
-            <li className="news-item">
-              <a href="#">
-                <h4>Tech layoffs slow down in Q1 2025</h4>
-                <p>2h ago • 5,234 readers</p>
-              </a>
-            </li>
-            <li className="news-item">
-              <a href="#">
-                <h4>Remote work trends shift as offices reopen</h4>
-                <p>4h ago • 3,129 readers</p>
-              </a>
-            </li>
-            <li className="news-item">
-              <a href="#">
-                <h4>Startup funding hits record high in 2024</h4>
-                <p>7h ago • 1,892 readers</p>
-              </a>
-            </li>
-            <li className="news-item">
-              <a href="#">
-                <h4>AI skills dominate job market in 2025</h4>
-                <p>1d ago • 7,456 readers</p>
-              </a>
-            </li>
-            <li className="news-item">
-              <a href="#">
-                <h4>New data privacy regulations take effect</h4>
-                <p>1d ago • 2,347 readers</p>
-              </a>
-            </li>
-          </ul>
-          <a href="#" className="show-more">Show more</a>
-        </div>
-
-        <div className="ad-card">
-          <p className="ad-label">Ad</p>
-          <div className="ad-content">
-            <h4>Upgrade to LinkedOut Premium</h4>
-            <p>Get access to premium features and insights</p>
-            <button className="premium-btn">Try for free</button>
-          </div>
-        </div>
       </div>
     </div>
   );

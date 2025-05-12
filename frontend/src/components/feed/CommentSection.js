@@ -3,6 +3,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { postService } from '../../services';
+import './CommentSection.css';
 
 const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
   const [hasMore, setHasMore] = useState(true);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editContent, setEditContent] = useState('');
+  const [error, setError] = useState('');
 
   // Fetch comments when the component mounts
   useEffect(() => {
@@ -24,7 +26,7 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
   const fetchComments = async () => {
     try {
       setLoading(true);
-      const response = await postService.getPostComments(postId, page);
+      const response = await postService.getComments(postId, page);
 
       if (page === 1) {
         setComments(response.items);
@@ -34,7 +36,7 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
 
       setHasMore(response.has_next);
     } catch (error) {
-      console.error('Failed to fetch comments:', error);
+      setError('Yorumlar yüklenemedi.');
     } finally {
       setLoading(false);
     }
@@ -69,8 +71,7 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
       // Notify parent component
       onCommentAdded();
     } catch (error) {
-      console.error('Failed to submit comment:', error);
-      alert('Failed to submit comment. Please try again.');
+      setError('Yorum eklenemedi.');
     } finally {
       setSubmitting(false);
     }
@@ -111,8 +112,7 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
       setEditingCommentId(null);
       setEditContent('');
     } catch (error) {
-      console.error('Failed to update comment:', error);
-      alert('Failed to update comment. Please try again.');
+      setError('Yorum güncellenemedi.');
     } finally {
       setSubmitting(false);
     }
@@ -133,8 +133,7 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
         // Notify parent component
         onCommentDeleted();
       } catch (error) {
-        console.error('Failed to delete comment:', error);
-        alert('Failed to delete comment. Please try again.');
+        setError('Yorum silinemedi.');
       } finally {
         setSubmitting(false);
       }
@@ -148,8 +147,14 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
     }
   };
 
+  if (loading) {
+    return <div className="loading">Yorumlar yükleniyor...</div>;
+  }
+
   return (
     <div className="comment-section">
+      {error && <div className="error-message">{error}</div>}
+
       <div className="comment-form">
         <img
           src={user?.profile?.profile_image || '/default-avatar.jpg'}
@@ -176,10 +181,8 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
       </div>
 
       <div className="comments-list">
-        {loading && comments.length === 0 ? (
-          <div className="comments-loading">Loading comments...</div>
-        ) : comments.length === 0 ? (
-          <div className="comments-empty">No comments yet. Be the first to comment!</div>
+        {comments.length === 0 ? (
+          <div className="comments-empty">Henüz yorum yapılmamış.</div>
         ) : (
           <>
             {comments.map(comment => (
