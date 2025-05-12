@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import Header from '../components/common/Header';
-import Footer from '../components/common/Footer';
+import Footer from '../components/Footer';
 import Sidebar from '../components/common/Sidebar';
 import NotificationPanel from '../components/common/NotificationPanel';
 

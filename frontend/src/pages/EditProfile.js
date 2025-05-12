@@ -68,7 +68,7 @@ const EditProfile = () => {
         await profileService.updateProfile(formData);
       } else {
         // Create new profile
-        await profileService.createProfile(formData);
+        await profileService.updateProfile(formData);
       }
 
       navigate('/profile');
