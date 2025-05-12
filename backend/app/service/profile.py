@@ -12,6 +12,7 @@ from app.schema.profile import (
     SkillCreate
 )
 from app.utils.helpers import save_image_with_resize, delete_file
+from app.config import settings
 
 
 def get_profile(db: Session, profile_id: int) -> Profile:
@@ -24,7 +25,15 @@ def get_profile(db: Session, profile_id: int) -> Profile:
 
 def get_profile_by_user_id(db: Session, user_id: int) -> Optional[Profile]:
     """Get a profile by user ID."""
-    return db.query(Profile).filter(Profile.user_id == user_id).first()
+    profile = db.query(Profile).filter(Profile.user_id == user_id).first()
+    if profile:
+        # Add media URL prefix to profile image if needed
+        if profile.profile_image and not profile.profile_image.startswith(settings.MEDIA_URL):
+            profile.profile_image = f"{settings.MEDIA_URL}{profile.profile_image}"
+        # Add media URL prefix to cover image if needed
+        if profile.cover_image and not profile.cover_image.startswith(settings.MEDIA_URL):
+            profile.cover_image = f"{settings.MEDIA_URL}{profile.cover_image}"
+    return profile
 
 
 def create_profile(db: Session, user_id: int, profile_data: ProfileCreate) -> Profile:
@@ -84,8 +93,8 @@ def upload_profile_image(db: Session, user_id: int, file: UploadFile) -> Profile
         max_height=400
     )
 
-    # Update profile
-    db_profile.profile_image = image_path
+    # Update profile with full URL
+    db_profile.profile_image = f"{settings.MEDIA_URL}{image_path}"
     db.commit()
     db.refresh(db_profile)
 
@@ -114,8 +123,8 @@ def upload_cover_image(db: Session, user_id: int, file: UploadFile) -> Profile:
         max_height=300
     )
 
-    # Update profile
-    db_profile.cover_image = image_path
+    # Update profile with full URL
+    db_profile.cover_image = f"{settings.MEDIA_URL}{image_path}"
     db.commit()
     db.refresh(db_profile)
 

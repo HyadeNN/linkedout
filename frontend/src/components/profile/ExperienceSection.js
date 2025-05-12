@@ -5,7 +5,9 @@ import { formatDateRange } from '../../utils/helpers';
 const ExperienceSection = ({
   experiences = [],
   isEditable = false,
-  onUpdate = () => {}
+  onUpdate = () => {},
+  onAddAbout = undefined,
+  showAddAbout = false
 }) => {
   const [editingId, setEditingId] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -245,15 +247,6 @@ const ExperienceSection = ({
     <div className="experience-section">
       <div className="section-header">
         <h2 className="section-title">Experience</h2>
-        {isEditable && !isAdding && !editingId && (
-          <button
-            className="add-item-btn"
-            onClick={() => setIsAdding(true)}
-            disabled={loading}
-          >
-            <span className="add-icon">+</span>
-          </button>
-        )}
       </div>
 
       {(isAdding || editingId) && renderExperienceForm()}
@@ -262,12 +255,14 @@ const ExperienceSection = ({
         <div className="empty-section">
           <p>Add your work experience</p>
           {isEditable && (
-            <button
-              className="add-experience-btn"
-              onClick={() => setIsAdding(true)}
-            >
-              Add experience
-            </button>
+            <div className="add-experience-container">
+              <button
+                className="add-experience-btn"
+                onClick={() => setIsAdding(true)}
+              >
+                Add experience
+              </button>
+            </div>
           )}
         </div>
       ) : (
@@ -310,6 +305,17 @@ const ExperienceSection = ({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {showAddAbout && (
+        <div className="add-about-container">
+          <button
+            className="add-about-btn"
+            onClick={onAddAbout}
+          >
+            Add about
+          </button>
         </div>
       )}
     </div>
