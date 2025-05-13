@@ -12,7 +12,8 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
     name: profile?.name || '',
     headline: profile?.headline || '',
     location: profile?.location || '',
-    bio: profile?.bio || ''
+    bio: profile?.bio || '',
+    about: profile?.profile?.about || ''
   });
 
   const handleInputChange = (e) => {
@@ -31,7 +32,13 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
         name: formData.name,
         headline: formData.headline,
         location: formData.location,
-        bio: formData.bio
+        bio: formData.bio,
+        profile: {
+          ...profile?.profile,
+          about: formData.about,
+          profile_image: profile?.profile?.profile_image || '',
+          cover_image: profile?.profile?.cover_image || ''
+        }
       });
       setIsEditing(false);
       onSaveProfile();
@@ -43,24 +50,17 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
   const handlePhotoUpload = async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
-
     try {
-      // Create a storage reference
       const storageRef = ref(storage, `${type}/${user.uid}/${file.name}`);
-      
-      // Upload the file
       const snapshot = await uploadBytes(storageRef, file);
-      
-      // Get the download URL
       const downloadURL = await getDownloadURL(snapshot.ref);
-      
-      // Update the user document in Firestore
       const userRef = doc(db, 'users', user.uid);
       await updateDoc(userRef, {
-        [type === 'profile' ? 'profile_image' : 'cover_image']: downloadURL
+        profile: {
+          ...profile?.profile,
+          [type === 'profile' ? 'profile_image' : 'cover_image']: downloadURL
+        }
       });
-
-      // Update local state
       if (type === 'profile') {
         onProfileImageChange({ target: { files: [file] } });
       } else {
@@ -74,8 +74,8 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
   return (
     <div className="profile-header">
       <div className="cover-photo">
-        {profile?.cover_image ? (
-          <img src={profile.cover_image} alt="Cover" />
+        {profile?.profile?.cover_image ? (
+          <img src={profile.profile.cover_image} alt="Cover" />
         ) : (
           <div className="cover-placeholder" />
         )}
@@ -91,8 +91,8 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
       </div>
       <div className="profile-info">
         <div className="profile-photo">
-          {profile?.profile_image ? (
-            <img src={profile.profile_image} alt="Profile" />
+          {profile?.profile?.profile_image ? (
+            <img src={profile.profile.profile_image} alt="Profile" />
           ) : (
             <div className="profile-placeholder" />
           )}
@@ -132,11 +132,18 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
                 placeholder="Location"
               />
               <textarea
+                name="about"
+                value={formData.about}
+                onChange={handleInputChange}
+                placeholder="About"
+                rows="3"
+              />
+              <input
+                type="text"
                 name="bio"
                 value={formData.bio}
                 onChange={handleInputChange}
                 placeholder="Bio"
-                rows="3"
               />
               <div className="button-group">
                 <button type="submit" className="save-button">Save</button>
@@ -148,6 +155,7 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
               <h1>{profile?.name || 'Your Name'}</h1>
               <p className="headline">{profile?.headline || 'Your Headline'}</p>
               <p className="location">{profile?.location || 'Your Location'}</p>
+              <p className="about">{profile?.profile?.about || 'Your About'}</p>
               <p className="bio">{profile?.bio || 'Your Bio'}</p>
               <button className="edit-button" onClick={() => setIsEditing(true)}>Edit Profile</button>
             </>

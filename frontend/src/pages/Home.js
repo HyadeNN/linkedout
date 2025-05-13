@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { postService } from '../services';
@@ -17,6 +17,7 @@ function getValidDate(date) {
 }
 
 const Home = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -28,32 +29,36 @@ const Home = () => {
     fetchPosts();
   }, []);
 
+  const handleHashtagClick = (hashtag) => {
+    // Remove the # symbol if present
+    const tag = hashtag.startsWith('#') ? hashtag.substring(1) : hashtag;
+    navigate(`/search?hashtag=${encodeURIComponent(tag)}`);
+  };
+
   const fetchPosts = async () => {
     try {
       setLoading(true);
       const data = await postService.getFeedPosts();
-      // Fetch author info for each post if not present
+      // Fetch author info for each post using userId
       const postsWithAuthors = await Promise.all(
         data.map(async post => {
-          if (!post.author) {
-            try {
-              const userDoc = await getDoc(doc(db, 'users', post.userId));
-              if (userDoc.exists()) {
-                const userData = userDoc.data();
-                return {
-                  ...post,
-                  author: {
-                    first_name: userData.name || '',
-                    last_name: '',
-                    profile: {
-                      profile_image: userData.profile?.profile_image || userData.profile_image || '',
-                      headline: userData.headline || ''
-                    }
+          try {
+            const userDoc = await getDoc(doc(db, 'users', post.userId));
+            if (userDoc.exists()) {
+              const userData = userDoc.data();
+              return {
+                ...post,
+                author: {
+                  first_name: userData.name || '',
+                  last_name: '',
+                  profile: {
+                    profile_image: userData.profile?.profile_image || userData.profile_image || '',
+                    headline: userData.headline || ''
                   }
-                };
-              }
-            } catch (e) {}
-          }
+                }
+              };
+            }
+          } catch (e) {}
           return post;
         })
       );

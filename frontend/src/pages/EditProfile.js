@@ -28,13 +28,13 @@ const EditProfile = () => {
         setProfile(profileData);
         setFormData({
           headline: profileData.headline || '',
-          about: profileData.about || '',
+          about: profileData.profile?.about || '',
           location: profileData.location || '',
           phone_number: profileData.phone_number || '',
           website: profileData.website || '',
-          profile_image: profileData.profile_image || ''
+          profile_image: profileData.profile?.profile_image || ''
         });
-        setImagePreview(profileData.profile_image || '');
+        setImagePreview(profileData.profile?.profile_image || '');
       } catch (error) {
         console.error('Failed to fetch profile:', error);
         if (error.response && error.response.status === 404) {
@@ -75,7 +75,16 @@ const EditProfile = () => {
     e.preventDefault();
     try {
       setSaving(true);
-      await profileService.updateProfile(formData);
+      await profileService.updateProfile({
+        headline: formData.headline,
+        location: formData.location,
+        phone_number: formData.phone_number,
+        website: formData.website,
+        profile: {
+          about: formData.about,
+          profile_image: formData.profile_image
+        }
+      });
       navigate('/profile');
     } catch (error) {
       console.error('Failed to save profile:', error);
@@ -96,7 +105,7 @@ const EditProfile = () => {
         <form onSubmit={handleSubmit} className="edit-profile-form">
           <div style={{ marginBottom: 24, textAlign: 'center' }}>
             <img
-              src={imagePreview || ''}
+              src={imagePreview || '/default-avatar.jpg'}
               alt="Profile Preview"
               style={{ width: 120, height: 120, borderRadius: '50%', objectFit: 'cover', marginBottom: 8 }}
             />

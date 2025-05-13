@@ -7,6 +7,7 @@ import ProfileHeader from './ProfileHeader';
 import ExperienceSection from './ExperienceSection';
 import EducationSection from './EducationSection';
 import SkillsSection from './SkillsSection';
+import NewPost from '../feed/NewPost';
 import './ProfileView.css';
 
 const ProfileView = () => {
@@ -252,6 +253,10 @@ const ProfileView = () => {
     }
   };
 
+  const handlePostCreated = (newPost) => {
+    setPosts([newPost, ...posts]);
+  };
+
   if (!user) {
     return (
       <div className="profile-loading">
@@ -262,62 +267,63 @@ const ProfileView = () => {
 
   return (
     <div className="profile-view">
+      <ProfileHeader
+        profileData={profileData}
+        onImageUpload={handleImageUpload}
+      />
+      
       <div className="profile-content">
-        <ProfileHeader 
-          user={user}
-          onImageUpload={handleImageUpload}
-        />
-        <div className="profile-tabs">
-          <button 
-            className={`tab-button ${activeTab === 'posts' ? 'active' : ''}`}
-            onClick={() => setActiveTab('posts')}
-          >
-            Posts
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'articles' ? 'active' : ''}`}
-            onClick={() => setActiveTab('articles')}
-          >
-            Articles
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'activities' ? 'active' : ''}`}
-            onClick={() => setActiveTab('activities')}
-          >
-            Activities
-          </button>
-          <button 
-            className={`tab-button ${activeTab === 'interests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('interests')}
-          >
-            Interests
-          </button>
-        </div>
-
-        <div className="profile-sections">
-          <div className="profile-images-section">
-            {profileData?.coverPhoto && (
-              <div className="cover-photo-container">
-                <img src={profileData.coverPhoto} alt="Cover" className="cover-photo" />
-              </div>
-            )}
-            {profileData?.profilePhoto && (
-              <div className="profile-photo-container">
-                <img src={profileData.profilePhoto} alt="Profile" className="profile-photo" />
-              </div>
-            )}
+        <div className="profile-main">
+          <div className="profile-tabs">
+            <button
+              className={`tab-button ${activeTab === 'posts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('posts')}
+            >
+              Posts
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'articles' ? 'active' : ''}`}
+              onClick={() => setActiveTab('articles')}
+            >
+              Articles
+            </button>
+            <button
+              className={`tab-button ${activeTab === 'activities' ? 'active' : ''}`}
+              onClick={() => setActiveTab('activities')}
+            >
+              Activities
+            </button>
           </div>
-          <ExperienceSection />
-          <EducationSection />
-          <SkillsSection />
 
           {activeTab === 'posts' && (
             <div className="posts-section">
-              <h2>Posts</h2>
+              <NewPost onPostCreated={handlePostCreated} />
               <div className="posts-list">
                 {posts.map(post => (
-                  <div key={post.id} className="post-item">
-                    <p>{post.content}</p>
+                  <div key={post.id} className="post-card">
+                    <div className="post-header">
+                      <img
+                        src={profileData?.profilePhoto || '/default-avatar.jpg'}
+                        alt={profileData?.name}
+                        className="post-avatar"
+                      />
+                      <div className="post-info">
+                        <h3>{profileData?.name}</h3>
+                        <p>{new Date(post.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <div className="post-content">
+                      <p>{post.content}</p>
+                      {post.hashtags && post.hashtags.length > 0 && (
+                        <div className="post-hashtags">
+                          {post.hashtags.map((hashtag, index) => (
+                            <span key={index} className="hashtag">
+                              {hashtag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <div className="post-actions">
                       <button onClick={() => handleLikePost(post.id)}>
                         Like ({post.likes || 0})
@@ -326,19 +332,6 @@ const ProfileView = () => {
                         Comment ({post.comments?.length || 0})
                       </button>
                     </div>
-                    {post.comments && post.comments.length > 0 && (
-                      <div className="comments-section">
-                        <h4>Comments</h4>
-                        {post.comments.map(comment => (
-                          <div key={comment.id} className="comment-item">
-                            <p>{comment.content}</p>
-                            <span className="comment-date">
-                              {new Date(comment.createdAt.toDate()).toLocaleDateString()}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
@@ -390,22 +383,6 @@ const ProfileView = () => {
                     <span className="activity-date">
                       {new Date(activity.createdAt.toDate()).toLocaleDateString()}
                     </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'interests' && (
-            <div className="interests-section">
-              <h2>Interests</h2>
-              <div className="interests-list">
-                {interests.map(interest => (
-                  <div key={interest.id} className="interest-item">
-                    <span>{interest.name}</span>
-                    <button onClick={() => handleRemoveInterest(interest.id)}>
-                      Remove
-                    </button>
                   </div>
                 ))}
               </div>

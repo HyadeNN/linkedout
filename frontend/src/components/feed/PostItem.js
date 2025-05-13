@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { postService } from '../../services';
 import CommentSection from './CommentSection';
 
-const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
+const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
@@ -134,6 +134,24 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
     setCommentsCount(prevCount => Math.max(0, prevCount - 1));
   };
 
+  const renderHashtags = () => {
+    if (!post.hashtags || post.hashtags.length === 0) return null;
+
+    return (
+      <div className="post-hashtags">
+        {post.hashtags.map((hashtag, index) => (
+          <button
+            key={index}
+            className="post-hashtag"
+            onClick={() => onHashtagClick(hashtag)}
+          >
+            {hashtag}
+          </button>
+        ))}
+      </div>
+    );
+  };
+
   return (
     <div className="post-item">
       <div className="post-header">
@@ -214,7 +232,10 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
             </div>
           </div>
         ) : (
-          <p className="post-text">{post.content}</p>
+          <>
+            <p className="post-text">{post.content}</p>
+            {renderHashtags()}
+          </>
         )}
 
         {post.image_url && (
@@ -250,7 +271,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           disabled={loading}
         >
           <span className="action-icon">👍</span>
-          <span className="action-label">{isLiked ? 'Liked' : 'Like'}</span>
+          <span>Like</span>
         </button>
 
         <button
@@ -259,15 +280,18 @@ const PostItem = ({ post, onUpdatePost, onDeletePost }) => {
           disabled={loading}
         >
           <span className="action-icon">💬</span>
-          <span className="action-label">Comment</span>
+          <span>Comment</span>
         </button>
 
         <button
           className="action-btn"
-          disabled={loading}
+          onClick={() => {
+            navigator.clipboard.writeText(window.location.href);
+            alert('Post link copied to clipboard!');
+          }}
         >
           <span className="action-icon">↗️</span>
-          <span className="action-label">Share</span>
+          <span>Share</span>
         </button>
       </div>
 

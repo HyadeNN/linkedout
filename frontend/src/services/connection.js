@@ -9,14 +9,14 @@ import {
   deleteDoc, 
   doc,
   orderBy,
-  limit,
+  limit as firestoreLimit,
   startAfter,
   getDoc
 } from 'firebase/firestore';
 import { auth } from '../firebase';
 
 // Get all connections
-export const getConnections = async (page = 1, limit = 20) => {
+export const getConnections = async (page = 1, pageLimit = 20) => {
   const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('User not authenticated');
 
@@ -26,7 +26,7 @@ export const getConnections = async (page = 1, limit = 20) => {
     where('status', '==', 'accepted'),
     where('participants', 'array-contains', userId),
     orderBy('updatedAt', 'desc'),
-    limit(limit)
+    firestoreLimit(pageLimit)
   );
 
   const snapshot = await getDocs(q);
@@ -53,7 +53,7 @@ export const getConnections = async (page = 1, limit = 20) => {
 };
 
 // Get connection requests
-export const getConnectionRequests = async (page = 1, limit = 20) => {
+export const getConnectionRequests = async (page = 1, pageLimit = 20) => {
   const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('User not authenticated');
 
@@ -63,7 +63,7 @@ export const getConnectionRequests = async (page = 1, limit = 20) => {
     where('status', '==', 'pending'),
     where('receiverId', '==', userId),
     orderBy('createdAt', 'desc'),
-    limit(limit)
+    firestoreLimit(pageLimit)
   );
 
   const snapshot = await getDocs(q);
@@ -89,7 +89,7 @@ export const getConnectionRequests = async (page = 1, limit = 20) => {
 };
 
 // Get connection suggestions
-export const getConnectionSuggestions = async (page = 1, limit = 20) => {
+export const getConnectionSuggestions = async (page = 1, pageLimit = 20) => {
   const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('User not authenticated');
   
@@ -110,7 +110,7 @@ export const getConnectionSuggestions = async (page = 1, limit = 20) => {
   const q = query(
     usersRef,
     where('uid', 'not-in', [...connectedUserIds, userId]),
-    limit(limit)
+    firestoreLimit(pageLimit)
   );
 
   const snapshot = await getDocs(q);
@@ -164,7 +164,7 @@ export const deleteConnection = async (connectionId) => {
 };
 
 // Get mutual connections
-export const getMutualConnections = async (userId, page = 1, limit = 20) => {
+export const getMutualConnections = async (userId, page = 1, pageLimit = 20) => {
   const currentUserId = auth.currentUser?.uid;
   if (!currentUserId) throw new Error('User not authenticated');
   
@@ -279,7 +279,7 @@ export const unfollowUser = async (userId) => {
 };
 
 // Get followers
-export const getFollowers = async (page = 1, limit = 20) => {
+export const getFollowers = async (page = 1, pageLimit = 20) => {
   const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('User not authenticated');
 
@@ -287,7 +287,7 @@ export const getFollowers = async (page = 1, limit = 20) => {
   const q = query(
     followsRef,
     where('followingId', '==', userId),
-    limit(limit)
+    firestoreLimit(pageLimit)
   );
   const snapshot = await getDocs(q);
   
@@ -310,7 +310,7 @@ export const getFollowers = async (page = 1, limit = 20) => {
 };
 
 // Get following
-export const getFollowing = async (page = 1, limit = 20) => {
+export const getFollowing = async (page = 1, pageLimit = 20) => {
   const userId = auth.currentUser?.uid;
   if (!userId) throw new Error('User not authenticated');
 
@@ -318,7 +318,7 @@ export const getFollowing = async (page = 1, limit = 20) => {
   const q = query(
     followsRef,
     where('followerId', '==', userId),
-    limit(limit)
+    firestoreLimit(pageLimit)
   );
   const snapshot = await getDocs(q);
   

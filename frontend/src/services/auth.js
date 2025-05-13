@@ -4,6 +4,8 @@ import { encodeFormData } from '../utils/formEncoder';
 import { debugLog } from '../utils/helpers';
 import api, { setAuthToken } from './api';
 import axios from 'axios';
+import { db } from '../firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
 
@@ -22,6 +24,25 @@ export const register = async (userData) => {
       displayName: userCredential.user.displayName,
       uid: userCredential.user.uid
     }));
+    // Firestore'a kullanıcıyı kaydet
+    await setDoc(doc(db, 'users', userCredential.user.uid), {
+      name: `${first_name} ${last_name}`,
+      email: userCredential.user.email,
+      createdAt: new Date(),
+      profile: {
+        profile_image: '',
+        cover_image: '',
+        about: ''
+      },
+      headline: '',
+      location: '',
+      bio: '',
+      experience: [],
+      education: [],
+      skill: [],
+      activity: [],
+      interest: []
+    });
     return { user: userCredential.user };
   } catch (error) {
     throw error;

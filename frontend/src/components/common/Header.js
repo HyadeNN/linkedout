@@ -7,6 +7,7 @@ import SearchBar from './SearchBar';
 import ProfileInfo from './ProfileInfo';
 import ProfileOther from './ProfileOther';
 import './Header.css';
+import { useNavigate } from 'react-router-dom';
 
 const navItems = [
   { name: 'Feed', icon: <FaRss />, path: '/' },
@@ -16,21 +17,31 @@ const navItems = [
   { name: 'Notices', icon: <FaBell />, path: '/notices' },
 ];
 
-const Header = () => {
+const Header = ({ onSearchResult }) => {
   const { user } = useAuth();
   const [profileStats, setProfileStats] = useState({ viewsToday: 0, viewsChange: 0 });
   const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     // TODO: Firebase'den gerçek istatistik çekilecek
     setProfileStats({ viewsToday: 367, viewsChange: 32 });
   }, []);
 
+  const handleResultSelect = (result) => {
+    if (result.type === 'hashtag') {
+      if (onSearchResult) onSearchResult({ hashtag: result.value });
+      navigate('/');
+    } else if (result.type === 'post') {
+      navigate(`/posts/${result.id}`);
+    }
+  };
+
   return (
     <header className="nav-header">
       <Logo />
       <NavigationMenu navItems={navItems} />
-      <SearchBar value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+      <SearchBar value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onResultSelect={handleResultSelect} />
       <div className="nav-profile-zone">
         <ProfileInfo user={user} stats={profileStats} />
         <ProfileOther />

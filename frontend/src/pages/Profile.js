@@ -9,6 +9,7 @@ import { postService } from '../services';
 import './Profile.css';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
+import NewPost from '../components/feed/NewPost';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -56,20 +57,7 @@ const Profile = () => {
         const userDoc = await getDoc(doc(db, 'users', user.uid));
         if (userDoc.exists()) {
           const userData = userDoc.data();
-          setProfile({
-            ...userData,
-            profile_image: userData.profile?.profile_image || null,
-            cover_image: userData.profile?.cover_image || null,
-            name: userData.name || '',
-            headline: userData.headline || '',
-            location: userData.location || '',
-            bio: userData.bio || '',
-            experience: userData.experience || [],
-            education: userData.education || [],
-            skill: userData.skill || [],
-            activity: userData.activity || [],
-            interest: userData.interest || []
-          });
+          setProfile(userData);
         }
       } catch (error) {
         console.error('Failed to fetch profile data:', error);
@@ -77,9 +65,8 @@ const Profile = () => {
         setLoading(false);
       }
     };
-
     if (user) {
-    fetchProfileData();
+      fetchProfileData();
     }
   }, [user]);
 
@@ -146,7 +133,10 @@ const Profile = () => {
     const file = e.target.files[0];
     if (file) {
       const url = await uploadProfileImage(file);
-      setProfile(prev => ({ ...prev, profile_image: url }));
+      setProfile(prev => ({
+        ...prev,
+        profile: { ...prev.profile, profile_image: url }
+      }));
     }
   };
 
@@ -154,12 +144,22 @@ const Profile = () => {
     const file = e.target.files[0];
     if (file) {
       const url = await uploadCoverImage(file);
-      setProfile(prev => ({ ...prev, cover_image: url }));
+      setProfile(prev => ({
+        ...prev,
+        profile: { ...prev.profile, cover_image: url }
+      }));
     }
   };
 
   const handleFieldChange = (field, value) => {
-    setProfile(prev => ({ ...prev, [field]: value }));
+    if (["about", "profile_image", "cover_image"].includes(field)) {
+      setProfile(prev => ({
+        ...prev,
+        profile: { ...prev.profile, [field]: value }
+      }));
+    } else {
+      setProfile(prev => ({ ...prev, [field]: value }));
+    }
   };
 
   const handleSaveProfile = async () => {
@@ -522,6 +522,11 @@ const Profile = () => {
     } finally {
       setArticleSubmitting(false);
     }
+  };
+
+  // Only NewPost for adding posts
+  const handlePostCreated = (newPost) => {
+    setPosts([newPost, ...posts]);
   };
 
   if (loading) {
@@ -944,43 +949,10 @@ const Profile = () => {
         <div className="profile-section-card">
               <div className="section-header">
           <h2 className="profile-section-title">Posts</h2>
-                <button 
-                  className="add-button"
-                  onClick={() => {
-                    setEditingSection(editingSection === 'post' ? null : 'post');
-                    setEditingPost(null);
-                    setPostForm({ content: '', image: null });
-                  }}
-                >
-                  {editingSection === 'post' ? 'Cancel' : 'Create Post'}
-                </button>
+                {/* Remove Create Post button here, do not render it */}
               </div>
           <div className="profile-section-content">
-                {editingSection === 'post' && (
-                  <form className="post-form" onSubmit={editingPost ? handleUpdatePost : handleAddPost}>
-              <textarea
-                name="content"
-                placeholder="What's on your mind?"
-                value={postForm.content}
-                onChange={handlePostInputChange}
-                required
-                className="post-input"
-                disabled={postSubmitting}
-              />
-              <input
-                type="file"
-                name="image"
-                accept="image/*"
-                onChange={handlePostInputChange}
-                className="post-input"
-                disabled={postSubmitting}
-              />
-              <button type="submit" className="post-btn" disabled={postSubmitting}>
-                      {postSubmitting ? 'Saving...' : editingPost ? 'Update Post' : 'Share Post'}
-              </button>
-              {postError && <div className="post-error">{postError}</div>}
-            </form>
-                )}
+                <NewPost onPostCreated={handlePostCreated} />
             {postsLoading ? (
               <div className="profile-empty">Loading posts...</div>
             ) : posts.length === 0 ? (
@@ -988,28 +960,98 @@ const Profile = () => {
             ) : (
               <div className="posts-list">
                 {posts.map(post => (
-                  <div key={post.id} className="post-card" style={{ position: 'relative' }}>
-                    <button
-                      className="edit-button-mini"
-                      title="Edit"
-                      onClick={() => handleEditPost(post)}
-                      style={{ fontWeight: 'bold', fontSize: '15px', position: 'absolute', top: 8, right: 36, background: 'none', border: 'none', color: '#0075B1', cursor: 'pointer' }}
-                    >
-                      ✎
-                    </button>
-                    <button
-                      className="delete-button"
-                      title="Delete"
-                      onClick={() => handleDeletePost(post.id)}
-                      style={{ fontWeight: 'bold', fontSize: '16px', position: 'absolute', top: 8, right: 8, background: 'none', border: 'none', color: '#d11124', cursor: 'pointer' }}
-                    >
-                      ×
-                    </button>
-                    <div className="post-header">
-                      <div className="post-author">You</div>
+                  <div key={post.id} className="post-card" style={{ position: 'relative', padding: 0 }}>
+                    <div className="post-header" style={{ padding: '16px 16px 0 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div className="post-author" style={{ fontWeight: 600, color: '#0a66c2' }}>You</div>
+                      <div className="post-actions">
+                        <button
+                          className="edit-button-mini"
+                          title="Edit"
+                          onClick={() => handleEditPost(post)}
+                          style={{ fontWeight: 'bold', fontSize: '15px', padding: '0 8px', background: 'none', border: 'none', color: '#0075B1', cursor: 'pointer' }}
+                        >
+                          ✎
+                        </button>
+                        <button
+                          className="delete-post-btn"
+                          title="Delete"
+                          onClick={() => handleDeletePost(post.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
                     </div>
-                    <div className="post-content-text" style={{ padding: '16px' }}>{post.content}</div>
-                    {post.image_url && <img src={post.image_url} alt="Post" className="post-image" />}
+                    {(post.imageUrl || post.image_url || post.image) && (
+                      <div style={{ width: '100%', textAlign: 'center', marginTop: 12 }}>
+                        <img
+                          src={post.imageUrl || post.image_url || post.image}
+                          alt="Post"
+                          className="post-image"
+                          style={{
+                            maxWidth: '96%',
+                            maxHeight: 320,
+                            borderRadius: 12,
+                            objectFit: 'cover',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="post-content-text" style={{ padding: '16px', fontSize: 17, color: '#222', wordBreak: 'break-word' }}>{post.content}</div>
+                    {post.hashtags && post.hashtags.length > 0 && (
+                      <div className="post-hashtags" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: '0 16px 16px 16px', marginTop: -8 }}>
+                        {post.hashtags.map((hashtag, index) => (
+                          <span
+                            key={index}
+                            style={{
+                              background: '#e8f3ff',
+                              color: '#0a66c2',
+                              borderRadius: 16,
+                              padding: '3px 14px',
+                              fontSize: 14,
+                              fontWeight: 500,
+                              whiteSpace: 'nowrap',
+                              maxWidth: '100%',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              display: 'inline-block',
+                              lineHeight: 1.6
+                            }}
+                          >
+                            {hashtag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <div style={{ padding: '0 16px 16px 16px', color: '#888', fontSize: 15 }}>
+                      <span>Beğeni: {post.likes_count || 0}</span>
+                    </div>
+                    {/* Düzenleme formu */}
+                    {editingPost && editingPost.id === post.id && editingSection === 'post' && (
+                      <form className="edit-form" onSubmit={handleUpdatePost} style={{ margin: 16 }}>
+                        <textarea
+                          name="content"
+                          value={postForm.content}
+                          onChange={e => setPostForm(prev => ({ ...prev, content: e.target.value }))}
+                          placeholder="İçerik"
+                          rows="3"
+                          required
+                        />
+                        <input
+                          type="file"
+                          name="image"
+                          accept="image/*"
+                          onChange={e => setPostForm(prev => ({ ...prev, image: e.target.files[0] }))}
+                        />
+                        <button type="submit" className="save-button" disabled={postSubmitting}>
+                          {postSubmitting ? 'Kaydediliyor...' : 'Kaydet'}
+                        </button>
+                        <button type="button" className="add-button" style={{ marginLeft: 8 }} onClick={() => { setEditingPost(null); setEditingSection(null); }}>
+                          İptal
+                        </button>
+                        {postError && <div className="post-error">{postError}</div>}
+                      </form>
+                    )}
                   </div>
                 ))}
               </div>

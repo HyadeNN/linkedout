@@ -12,7 +12,7 @@ export const getCurrentUserProfile = async () => {
   const userRef = doc(db, 'users', user.uid);
   const userSnap = await getDoc(userRef);
   if (!userSnap.exists()) throw new Error('Profile not found');
-  return userSnap.data().profile || {};
+  return userSnap.data();
 };
 
 // Create or update current user profile
@@ -21,7 +21,7 @@ export const updateProfile = async (profileData) => {
   const user = auth.currentUser;
   if (!user) throw new Error('No user logged in');
   const userRef = doc(db, 'users', user.uid);
-  await setDoc(userRef, { profile: profileData }, { merge: true });
+  await setDoc(userRef, profileData, { merge: true });
   return profileData;
 };
 
