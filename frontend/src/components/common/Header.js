@@ -8,6 +8,8 @@ import ProfileInfo from './ProfileInfo';
 import ProfileOther from './ProfileOther';
 import './Header.css';
 import { useNavigate } from 'react-router-dom';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 const navItems = [
   { name: 'Feed', icon: <FaRss />, path: '/' },
@@ -19,14 +21,29 @@ const navItems = [
 
 const Header = ({ onSearchResult }) => {
   const { user } = useAuth();
-  const [profileStats, setProfileStats] = useState({ viewsToday: 0, viewsChange: 0 });
+  const [profileStats, setProfileStats] = useState({ viewsToday: 367, viewsChange: 32 });
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
   const navigate = useNavigate();
 
+  // Fetch current user's profile
   useEffect(() => {
-    // TODO: Firebase'den gerçek istatistik çekilecek
-    setProfileStats({ viewsToday: 367, viewsChange: 32 });
-  }, []);
+    const fetchUserProfile = async () => {
+      if (user?.uid) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setCurrentUserProfile(userData);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [user?.uid]);
 
   const handleResultSelect = (result) => {
     if (result.type === 'hashtag') {
@@ -43,7 +60,7 @@ const Header = ({ onSearchResult }) => {
       <NavigationMenu navItems={navItems} />
       <SearchBar value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onResultSelect={handleResultSelect} />
       <div className="nav-profile-zone">
-        <ProfileInfo user={user} stats={profileStats} />
+        <ProfileInfo user={{ ...user, profile: currentUserProfile }} stats={profileStats} />
         <ProfileOther />
       </div>
     </header>

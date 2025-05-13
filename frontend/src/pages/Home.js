@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { postService } from '../services';
 import CommentSection from '../components/feed/CommentSection';
+import NewPost from '../components/feed/NewPost';
 import './Home.css';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -126,6 +127,11 @@ const Home = () => {
     }
   };
 
+  const handlePostCreated = (newPost) => {
+    // Add the new post to the beginning of the posts array
+    setPosts(prevPosts => [newPost, ...prevPosts]);
+  };
+
   if (loading) {
     return <div className="loading">Gönderiler yükleniyor...</div>;
   }
@@ -137,6 +143,10 @@ const Home = () => {
   return (
     <div className="home-page">
       <div className="feed-container">
+        <div className="new-post-container">
+          <NewPost onPostCreated={handlePostCreated} />
+        </div>
+
         {posts.length === 0 ? (
           <div className="no-posts">
             <p>Henüz hiç gönderi yok.</p>

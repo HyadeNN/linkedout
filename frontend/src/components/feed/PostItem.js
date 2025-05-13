@@ -142,10 +142,10 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
         {post.hashtags.map((hashtag, index) => (
           <button
             key={index}
-            className="post-hashtag"
+            className="hashtag-button"
             onClick={() => onHashtagClick(hashtag)}
           >
-            {hashtag}
+            {hashtag.replace(/^#/, '')}
           </button>
         ))}
       </div>
@@ -235,17 +235,16 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
           <>
             <p className="post-text">{post.content}</p>
             {renderHashtags()}
+            {post.image_url && (
+              <div className="post-image-container">
+                <img
+                  src={post.image_url}
+                  alt="Post"
+                  className="post-image"
+                />
+              </div>
+            )}
           </>
-        )}
-
-        {post.image_url && (
-          <div className="post-image-container">
-            <img
-              src={post.image_url}
-              alt="Post"
-              className="post-image"
-            />
-          </div>
         )}
       </div>
 

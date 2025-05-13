@@ -8,8 +8,8 @@ import * as notificationService from './notification';
 import * as jobService from './job';
 import * as pageService from './page';
 import * as hashtagService from './hashtag';
-import * as groupService from './group';
 import * as teammateService from './teammate';
+import * as teamService from './team';
 export * as projectService from './project';
 
 export {
@@ -25,6 +25,6 @@ export {
   jobService,
   pageService,
   hashtagService,
-  groupService,
   teammateService,
+  teamService,
 };

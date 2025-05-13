@@ -1,0 +1,285 @@
+.post-item {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+
+.post-header {
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #f0f2f5;
+}
+
+.post-author {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.author-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin-right: 12px;
+  object-fit: cover;
+}
+
+.author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.author-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.author-headline {
+  font-size: 14px;
+  color: #666;
+  margin: 2px 0;
+}
+
+.post-time {
+  font-size: 12px;
+  color: #888;
+}
+
+.post-content {
+  padding: 16px;
+}
+
+.post-text {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1a1a1a;
+  margin: 0 0 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.post-hashtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.post-hashtags .hashtag-button {
+  background: #f0f7ff;
+  border: none;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 14px;
+  color: #0073b1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.post-hashtags .hashtag-button:hover {
+  background: #deebff;
+  color: #004182;
+}
+
+.post-hashtags .hashtag-button::before {
+  content: '#';
+  margin-right: 2px;
+}
+
+.post-image-container {
+  margin: 12px -16px 0;
+}
+
+.post-image {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+}
+
+.post-stats {
+  padding: 12px 16px;
+  border-top: 1px solid #f0f2f5;
+  display: flex;
+  justify-content: space-between;
+  color: #666;
+  font-size: 14px;
+}
+
+.likes-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.comments-count {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+}
+
+.comments-count:hover {
+  text-decoration: underline;
+}
+
+.post-actions {
+  display: flex;
+  border-top: 1px solid #f0f2f5;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  background: #f5f7fa;
+}
+
+.action-btn.liked {
+  color: #0073b1;
+}
+
+.action-icon {
+  font-size: 18px;
+}
+
+.post-options {
+  position: relative;
+}
+
+.options-btn {
+  background: none;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #666;
+  font-size: 20px;
+}
+
+.options-btn:hover {
+  background: #f5f7fa;
+}
+
+.options-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  min-width: 120px;
+  z-index: 10;
+}
+
+.option-item {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  text-align: left;
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #1a1a1a;
+  cursor: pointer;
+}
+
+.option-item:hover {
+  background: #f5f7fa;
+}
+
+.option-item.delete {
+  color: #dc2626;
+}
+
+.option-item.delete:hover {
+  background: #fee2e2;
+}
+
+.post-edit-form {
+  margin-top: 12px;
+}
+
+.edit-textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.edit-textarea:focus {
+  outline: none;
+  border-color: #0073b1;
+  box-shadow: 0 0 0 2px rgba(0, 115, 177, 0.2);
+}
+
+.edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.cancel-edit-btn,
+.save-edit-btn {
+  padding: 8px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cancel-edit-btn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  color: #666;
+}
+
+.cancel-edit-btn:hover {
+  background: #f5f7fa;
+}
+
+.save-edit-btn {
+  background: #0073b1;
+  border: none;
+  color: white;
+}
+
+.save-edit-btn:hover {
+  background: #004182;
+}
+
+.save-edit-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+} 

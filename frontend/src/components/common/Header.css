@@ -110,10 +110,25 @@
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  object-fit: cover;
+  overflow: hidden;
   margin-right: 18px;
   border: 2px solid #e6e6e6;
+  background: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+
+.nav-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nav-profile-avatar-empty {
+  background-color: #f3f4f6;
+}
+
 .nav-profile-texts {
   display: flex;
   flex-direction: column;

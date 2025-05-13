@@ -3,9 +3,9 @@ import { formatDistanceToNow } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { postService } from '../../services';
-import './CommentSection.css';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import './CommentSection.css';
 
 const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
   const { user } = useAuth();
@@ -13,47 +13,66 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
   const [commentContent, setCommentContent] = useState('');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(true);
   const [editingCommentId, setEditingCommentId] = useState(null);
   const [editContent, setEditContent] = useState('');
   const [error, setError] = useState('');
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+
+  // Fetch current user's profile
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.uid) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setCurrentUserProfile(userData);
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [user?.uid]);
+
+  // Helper function to format timestamp
+  const formatTimestamp = (timestamp) => {
+    if (!timestamp) return '';
+    
+    // Handle Firestore Timestamp
+    if (timestamp?.seconds) {
+      return formatDistanceToNow(new Date(timestamp.seconds * 1000), { addSuffix: true });
+    }
+    
+    // Handle JavaScript Date
+    if (timestamp instanceof Date) {
+      return formatDistanceToNow(timestamp, { addSuffix: true });
+    }
+    
+    // Handle string date
+    if (typeof timestamp === 'string') {
+      return formatDistanceToNow(new Date(timestamp), { addSuffix: true });
+    }
+
+    return '';
+  };
 
   // Fetch comments when the component mounts
   useEffect(() => {
     fetchComments();
-  }, [postId, page]);
+  }, [postId]);
 
   // Fetch comments
   const fetchComments = async () => {
     try {
       setLoading(true);
-      const comments = await postService.getComments(postId);
-      // Fetch author info for each comment
-      const commentsWithAuthors = await Promise.all(
-        comments.map(async comment => {
-          const userDoc = await getDoc(doc(db, 'users', comment.userId));
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            return {
-              ...comment,
-              author: {
-                first_name: userData.name || '',
-                last_name: '',
-                profile: {
-                  profile_image: userData.profile?.profile_image || userData.profile_image || '',
-                  headline: userData.headline || ''
-                }
-              }
-            };
-          }
-          return comment;
-        })
-      );
-      setComments(commentsWithAuthors);
-      setHasMore(false);
+      const fetchedComments = await postService.getComments(postId);
+      setComments(fetchedComments);
     } catch (error) {
-      setError('Yorumlar yüklenemedi.');
+      console.error('Failed to fetch comments:', error);
+      setError('Failed to load comments. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -70,48 +89,34 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
     if (commentContent.trim() === '') {
       return;
     }
+
     try {
       setSubmitting(true);
-      const newCommentId = await postService.createComment(postId, user.uid, commentContent);
-      // Fetch the new comment with author info
-      const commentDoc = await getDoc(doc(db, 'comments', newCommentId));
-      let newComment = { id: commentDoc.id, ...commentDoc.data() };
-      // Fetch author profile
-      const userDoc = await getDoc(doc(db, 'users', newComment.userId));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        newComment.author = {
-          first_name: userData.name || '',
-          last_name: '',
-          profile: {
-            profile_image: userData.profile?.profile_image || userData.profile_image || '',
-            headline: userData.headline || ''
-          }
-        };
-      }
+      const newComment = await postService.createComment(postId, user.uid, commentContent);
       setComments(prevComments => [newComment, ...prevComments]);
       setCommentContent('');
       onCommentAdded();
     } catch (error) {
-      setError('Yorum eklenemedi.');
+      console.error('Failed to add comment:', error);
+      setError('Failed to add comment. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Start editing a comment
+  // Handle edit comment
   const handleEditComment = (comment) => {
     setEditingCommentId(comment.id);
     setEditContent(comment.content);
   };
 
-  // Cancel editing a comment
+  // Handle cancel edit
   const handleCancelEdit = () => {
     setEditingCommentId(null);
     setEditContent('');
   };
 
-  // Save edited comment
+  // Handle save edit
   const handleSaveEdit = async (commentId) => {
     if (editContent.trim() === '') {
       return;
@@ -119,58 +124,53 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
 
     try {
       setSubmitting(true);
-      const updatedComment = await postService.updateComment(commentId, {
+      const updatedComment = await postService.updateComment(postId, commentId, {
         content: editContent
       });
 
-      // Update comment in the list
       setComments(prevComments =>
         prevComments.map(comment =>
-          comment.id === commentId ? { ...comment, content: updatedComment.content } : comment
+          comment.id === commentId 
+            ? { 
+                ...comment, 
+                content: editContent,
+                updatedAt: updatedComment.updatedAt
+              } 
+            : comment
         )
       );
 
-      // Reset edit state
       setEditingCommentId(null);
       setEditContent('');
     } catch (error) {
-      setError('Yorum güncellenemedi.');
+      console.error('Failed to update comment:', error);
+      setError('Failed to update comment. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Delete a comment
+  // Handle delete comment
   const handleDeleteComment = async (commentId) => {
-    if (window.confirm('Are you sure you want to delete this comment?')) {
-      try {
-        setSubmitting(true);
-        await postService.deleteComment(commentId);
-
-        // Remove comment from the list
-        setComments(prevComments =>
-          prevComments.filter(comment => comment.id !== commentId)
-        );
-
-        // Notify parent component
-        onCommentDeleted();
-      } catch (error) {
-        setError('Yorum silinemedi.');
-      } finally {
-        setSubmitting(false);
-      }
+    if (!window.confirm('Are you sure you want to delete this comment?')) {
+      return;
     }
-  };
 
-  // Load more comments
-  const handleLoadMore = () => {
-    if (hasMore && !loading) {
-      setPage(prevPage => prevPage + 1);
+    try {
+      setSubmitting(true);
+      await postService.deleteComment(postId, commentId);
+      setComments(prevComments => prevComments.filter(comment => comment.id !== commentId));
+      onCommentDeleted();
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+      setError('Failed to delete comment. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   if (loading) {
-    return <div className="loading">Yorumlar yükleniyor...</div>;
+    return <div className="loading">Loading comments...</div>;
   }
 
   return (
@@ -179,8 +179,8 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
 
       <div className="comment-form">
         <img
-          src={user?.profile?.profile_image || '/default-avatar.jpg'}
-          alt={`${user?.first_name} ${user?.last_name}`}
+          src={currentUserProfile?.profile?.profile_image || currentUserProfile?.profile_image || '/default-avatar.jpg'}
+          alt={`${currentUserProfile?.name || 'User'}`}
           className="commenter-avatar"
         />
         <form onSubmit={handleSubmitComment}>
@@ -204,99 +204,84 @@ const CommentSection = ({ postId, onCommentAdded, onCommentDeleted }) => {
 
       <div className="comments-list">
         {comments.length === 0 ? (
-          <div className="comments-empty">Henüz yorum yapılmamış.</div>
+          <div className="comments-empty">No comments yet. Be the first to comment!</div>
         ) : (
-          <>
-            {comments.map(comment => (
-              <div key={comment.id} className="comment-item">
-                <Link to={`/users/${comment.author_id}`} className="comment-author">
-                  <img
-                    src={comment.author?.profile?.profile_image || '/default-avatar.jpg'}
-                    alt={`${comment.author?.first_name} ${comment.author?.last_name}`}
-                    className="comment-avatar"
-                  />
-                </Link>
+          comments.map(comment => (
+            <div key={comment.id} className="comment-item">
+              <Link to={`/users/${comment.author?.id}`}>
+                <img
+                  src={comment.author?.profile?.profile_image || '/default-avatar.jpg'}
+                  alt={`${comment.author?.first_name}`}
+                  className="comment-avatar"
+                />
+              </Link>
 
-                <div className="comment-content">
-                  <div className="comment-header">
-                    <Link to={`/users/${comment.author_id}`} className="comment-author-name">
-                      {comment.author?.first_name} {comment.author?.last_name}
-                    </Link>
-                    <span className="comment-time">
-                      {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
-                    </span>
-                  </div>
+              <div className="comment-content">
+                <div className="comment-header">
+                  <Link to={`/users/${comment.author?.id}`} className="comment-author-name">
+                    {comment.author?.first_name}
+                  </Link>
+                  <span className="comment-time">
+                    {formatTimestamp(comment.createdAt)}
+                    {comment.updatedAt && ' (edited)'}
+                  </span>
+                </div>
 
-                  {editingCommentId === comment.id ? (
-                    <div className="comment-edit-form">
-                      <input
-                        type="text"
-                        value={editContent}
-                        onChange={(e) => setEditContent(e.target.value)}
-                        className="edit-comment-input"
+                {editingCommentId === comment.id ? (
+                  <div className="comment-edit-form">
+                    <input
+                      type="text"
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      className="edit-comment-input"
+                      disabled={submitting}
+                      autoFocus
+                    />
+                    <div className="edit-comment-actions">
+                      <button
+                        type="button"
+                        onClick={handleCancelEdit}
+                        className="cancel-edit-btn"
                         disabled={submitting}
-                        autoFocus
-                      />
-                      <div className="edit-comment-actions">
-                        <button
-                          type="button"
-                          onClick={handleCancelEdit}
-                          className="cancel-edit-btn"
-                          disabled={submitting}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleSaveEdit(comment.id)}
-                          className="save-edit-btn"
-                          disabled={submitting || editContent.trim() === ''}
-                        >
-                          {submitting ? 'Saving...' : 'Save'}
-                        </button>
-                      </div>
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveEdit(comment.id)}
+                        className="save-edit-btn"
+                        disabled={submitting || editContent.trim() === ''}
+                      >
+                        Save
+                      </button>
                     </div>
-                  ) : (
+                  </div>
+                ) : (
+                  <>
                     <p className="comment-text">{comment.content}</p>
-                  )}
-
-                  <div className="comment-actions">
-                    <button className="comment-action-btn">Like</button>
-                    <button className="comment-action-btn">Reply</button>
-
-                    {comment.author_id === user?.id && (
-                      <>
+                    {comment.userId === user?.uid && (
+                      <div className="comment-actions">
                         <button
-                          className="comment-action-btn"
+                          type="button"
                           onClick={() => handleEditComment(comment)}
-                          disabled={submitting}
+                          className="comment-action-btn"
                         >
                           Edit
                         </button>
                         <button
-                          className="comment-action-btn delete"
+                          type="button"
                           onClick={() => handleDeleteComment(comment.id)}
-                          disabled={submitting}
+                          className="comment-action-btn"
                         >
                           Delete
                         </button>
-                      </>
+                      </div>
                     )}
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
-            ))}
-
-            {hasMore && (
-              <button
-                className="load-more-comments-btn"
-                onClick={handleLoadMore}
-                disabled={loading}
-              >
-                {loading ? 'Loading...' : 'Load More Comments'}
-              </button>
-            )}
-          </>
+            </div>
+          ))
         )}
       </div>
     </div>

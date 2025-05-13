@@ -209,35 +209,134 @@ export const searchPosts = async (searchTerm) => {
 
 // Create a comment
 export const createComment = async (postId, userId, content) => {
-  const docRef = await addDoc(collection(db, 'comments'), {
-    postId,
-    userId,
-    content,
-    createdAt: serverTimestamp()
-  });
-  return docRef.id;
+  try {
+    const postRef = doc(db, 'posts', postId);
+    const postDoc = await getDoc(postRef);
+    
+    if (!postDoc.exists()) {
+      throw new Error('Post not found');
+    }
+
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userData = userDoc.data();
+
+    const newComment = {
+      id: uuidv4(),
+      userId,
+      content,
+      createdAt: serverTimestamp(),
+      author: {
+        id: userId,
+        first_name: userData.name || '',
+        last_name: '',
+        profile: {
+          profile_image: userData.profile?.profile_image || userData.profile_image || '',
+          headline: userData.headline || ''
+        }
+      }
+    };
+
+    const postData = postDoc.data();
+    const comments = postData.comments || [];
+    
+    // Add new comment to the beginning of the array
+    await updateDoc(postRef, {
+      comments: [
+        {
+          ...newComment,
+          createdAt: new Date().toISOString() // Use ISO string for array
+        },
+        ...comments
+      ],
+      comments_count: increment(1)
+    });
+
+    return newComment;
+  } catch (error) {
+    console.error('Error creating comment:', error);
+    throw error;
+  }
 };
 
 // Update a comment
-export const updateComment = async (commentId, content) => {
-  // Implementation needed
-  throw new Error('Method not implemented');
+export const updateComment = async (postId, commentId, { content }) => {
+  try {
+    const postRef = doc(db, 'posts', postId);
+    const postDoc = await getDoc(postRef);
+    
+    if (!postDoc.exists()) {
+      throw new Error('Post not found');
+    }
+
+    const postData = postDoc.data();
+    const comments = postData.comments || [];
+    const commentIndex = comments.findIndex(c => c.id === commentId);
+
+    if (commentIndex === -1) {
+      throw new Error('Comment not found');
+    }
+
+    // Update the comment in the array
+    const updatedComments = [...comments];
+    updatedComments[commentIndex] = {
+      ...comments[commentIndex],
+      content,
+      updatedAt: new Date().toISOString() // Use ISO string for array
+    };
+
+    // Update the post with new comments array
+    await updateDoc(postRef, {
+      comments: updatedComments
+    });
+
+    return updatedComments[commentIndex];
+  } catch (error) {
+    console.error('Error updating comment:', error);
+    throw error;
+  }
 };
 
 // Delete a comment
-export const deleteComment = async (commentId) => {
-  await deleteDoc(doc(db, 'comments', commentId));
+export const deleteComment = async (postId, commentId) => {
+  try {
+    const postRef = doc(db, 'posts', postId);
+    const postDoc = await getDoc(postRef);
+    
+    if (!postDoc.exists()) {
+      throw new Error('Post not found');
+    }
+
+    const postData = postDoc.data();
+    const comments = postData.comments || [];
+    const updatedComments = comments.filter(c => c.id !== commentId);
+
+    // Update post with filtered comments array and decrement count
+    await updateDoc(postRef, {
+      comments: updatedComments,
+      comments_count: increment(-1)
+    });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    throw error;
+  }
 };
 
 // Get post comments
 export const getComments = async (postId) => {
-  const q = query(
-    collection(db, 'comments'),
-    where('postId', '==', postId),
-    orderBy('createdAt', 'desc')
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const postRef = doc(db, 'posts', postId);
+    const postDoc = await getDoc(postRef);
+    
+    if (!postDoc.exists()) {
+      throw new Error('Post not found');
+    }
+
+    const postData = postDoc.data();
+    return postData.comments || [];
+  } catch (error) {
+    console.error('Error getting comments:', error);
+    throw error;
+  }
 };
 
 // Get posts with filters and user data

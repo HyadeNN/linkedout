@@ -4,6 +4,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { ConnectionProvider } from './contexts/ConnectionContext';
 
 // Layouts
 import MainLayout from './layouts/MainLayout';
@@ -68,165 +69,167 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <NotificationProvider>
-          <LanguageProvider>
-            <Router>
-              <Routes>
-                {/* Test API Page - accessible without auth */}
-                <Route path="/test-api" element={<TestApi />} />
+        <ConnectionProvider>
+          <NotificationProvider>
+            <LanguageProvider>
+              <Router>
+                <Routes>
+                  {/* Test API Page - accessible without auth */}
+                  <Route path="/test-api" element={<TestApi />} />
 
-                {/* Auth Routes */}
-                <Route path="/auth/login" element={
-                  <PublicRoute>
-                    <AuthLayout>
-                      <Login />
-                    </AuthLayout>
-                  </PublicRoute>
-                } />
-                <Route path="/auth/register" element={
-                  <PublicRoute>
-                    <AuthLayout>
-                      <Register />
-                    </AuthLayout>
-                  </PublicRoute>
-                } />
-                {/* Alternative routes for convenience - redirect to /auth/* paths */}
-                <Route path="/login" element={<Navigate to="/auth/login" replace />} />
-                <Route path="/register" element={<Navigate to="/auth/register" replace />} />
-                <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
+                  {/* Auth Routes */}
+                  <Route path="/auth/login" element={
+                    <PublicRoute>
+                      <AuthLayout>
+                        <Login />
+                      </AuthLayout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/auth/register" element={
+                    <PublicRoute>
+                      <AuthLayout>
+                        <Register />
+                      </AuthLayout>
+                    </PublicRoute>
+                  } />
+                  {/* Alternative routes for convenience - redirect to /auth/* paths */}
+                  <Route path="/login" element={<Navigate to="/auth/login" replace />} />
+                  <Route path="/register" element={<Navigate to="/auth/register" replace />} />
+                  <Route path="/forgot-password" element={<Navigate to="/auth/forgot-password" replace />} />
 
-                <Route path="/auth/verify-email" element={
-                  <PublicRoute>
-                    <AuthLayout>
-                      <VerifyEmail />
-                    </AuthLayout>
-                  </PublicRoute>
-                } />
-                <Route path="/auth/forgot-password" element={
-                  <PublicRoute>
-                    <AuthLayout>
-                      <ForgotPassword />
-                    </AuthLayout>
-                  </PublicRoute>
-                } />
-                <Route path="/auth/reset-password" element={
-                  <PublicRoute>
-                    <AuthLayout>
-                      <ResetPassword />
-                    </AuthLayout>
-                  </PublicRoute>
-                } />
+                  <Route path="/auth/verify-email" element={
+                    <PublicRoute>
+                      <AuthLayout>
+                        <VerifyEmail />
+                      </AuthLayout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/auth/forgot-password" element={
+                    <PublicRoute>
+                      <AuthLayout>
+                        <ForgotPassword />
+                      </AuthLayout>
+                    </PublicRoute>
+                  } />
+                  <Route path="/auth/reset-password" element={
+                    <PublicRoute>
+                      <AuthLayout>
+                        <ResetPassword />
+                      </AuthLayout>
+                    </PublicRoute>
+                  } />
 
-                {/* Protected Routes */}
-                <Route path="/" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <Home />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/profile" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <Profile />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/profile/edit" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <EditProfile />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/network" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <Network />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/jobs" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <Jobs />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/jobs/:jobId" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <JobDetail />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/jobs/create" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <CreateJob />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/jobs/my-jobs" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <MyJobs />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/jobs/saved" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <SavedJobs />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/applications" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <Applications />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/notifications" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <Notifications />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/posts/:postId" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <PostDetail />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/users/:userId" element={
-                  <PrivateRoute>
-                    <MainLayout>
-                      <UserProfile />
-                    </MainLayout>
-                  </PrivateRoute>
-                } />
-                <Route path="/about" element={<About />} />
-                <Route path="/careers" element={<Careers />} />
-                <Route path="/advertising" element={<Advertising />} />
-                <Route path="/small-business" element={<SmallBusiness />} />
-                <Route path="/talent-solutions" element={<TalentSolutions />} />
-                <Route path="/marketing-solutions" element={<MarketingSolutions />} />
-                <Route path="/sales-solutions" element={<SalesSolutions />} />
-                <Route path="/safety-center" element={<SafetyCenter />} />
-                <Route path="/community-guidelines" element={<CommunityGuidelines />} />
-                <Route path="/privacy-terms" element={<PrivacyTerms />} />
-                <Route path="/mobile-app" element={<MobileApp />} />
+                  {/* Protected Routes */}
+                  <Route path="/" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <Home />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/profile" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <Profile />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/profile/edit" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <EditProfile />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/network" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <Network />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/jobs" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <Jobs />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/jobs/:jobId" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <JobDetail />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/jobs/create" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <CreateJob />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/jobs/my-jobs" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <MyJobs />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/jobs/saved" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <SavedJobs />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/applications" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <Applications />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/notifications" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <Notifications />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/posts/:postId" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <PostDetail />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/users/:userId" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <UserProfile />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/about" element={<About />} />
+                  <Route path="/careers" element={<Careers />} />
+                  <Route path="/advertising" element={<Advertising />} />
+                  <Route path="/small-business" element={<SmallBusiness />} />
+                  <Route path="/talent-solutions" element={<TalentSolutions />} />
+                  <Route path="/marketing-solutions" element={<MarketingSolutions />} />
+                  <Route path="/sales-solutions" element={<SalesSolutions />} />
+                  <Route path="/safety-center" element={<SafetyCenter />} />
+                  <Route path="/community-guidelines" element={<CommunityGuidelines />} />
+                  <Route path="/privacy-terms" element={<PrivacyTerms />} />
+                  <Route path="/mobile-app" element={<MobileApp />} />
 
-                {/* 404 Route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Router>
-          </LanguageProvider>
-        </NotificationProvider>
+                  {/* 404 Route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </Router>
+            </LanguageProvider>
+          </NotificationProvider>
+        </ConnectionProvider>
       </AuthProvider>
     </ThemeProvider>
   );

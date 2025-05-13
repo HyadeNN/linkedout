@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { postService } from '../../services';
-import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import './NewPost.css';
 
@@ -16,8 +16,26 @@ const NewPost = ({ onPostCreated }) => {
   const [currentHashtag, setCurrentHashtag] = useState('');
   const [suggestedHashtags, setSuggestedHashtags] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
   const fileInputRef = useRef(null);
   const hashtagInputRef = useRef(null);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      if (user?.uid) {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setUserProfile(userDoc.data());
+          }
+        } catch (error) {
+          console.error('Error fetching user profile:', error);
+        }
+      }
+    };
+
+    fetchUserProfile();
+  }, [user]);
 
   useEffect(() => {
     const fetchSuggestedHashtags = async () => {
@@ -191,148 +209,102 @@ const NewPost = ({ onPostCreated }) => {
     <div className="new-post-card">
       <div className="post-form-header">
         <img
-          src={user?.profile?.profile_image || '/default-avatar.jpg'}
-          alt={`${user?.first_name} ${user?.last_name}`}
+          src={userProfile?.profile?.profile_image || '/default-avatar.jpg'}
+          alt={userProfile?.name || 'User'}
           className="user-avatar"
         />
 
         {expanded ? (
           <div className="post-input-container">
             <textarea
+              placeholder="Ne düşünüyorsun?"
               value={content}
               onChange={handleContentChange}
-              placeholder="What's on your mind?"
-              className="post-textarea"
-              autoFocus
-              disabled={submitting}
+              className="post-input"
             />
-            <div className="hashtag-input-container">
-              <input
-                type="text"
-                ref={hashtagInputRef}
-                value={currentHashtag}
-                onChange={handleHashtagChange}
-                onKeyDown={handleHashtagKeyDown}
-                placeholder="Add hashtags (press Enter to add)"
-                className="hashtag-input"
-                disabled={submitting}
-              />
-              {showSuggestions && suggestedHashtags.length > 0 && (
-                <div className="hashtag-suggestions">
-                  {suggestedHashtags.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      className="hashtag-suggestion"
-                      onClick={() => handleSuggestionClick(suggestion)}
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div className="hashtag-list">
-                {hashtags.map((hashtag, idx) => (
-                  <div key={idx} className="hashtag-item">
+            {imagePreview && (
+              <div className="image-preview-container">
+                <img src={imagePreview} alt="Preview" className="image-preview" />
+                <button onClick={handleRemoveImage} className="remove-image-btn">
+                  ✕
+                </button>
+              </div>
+            )}
+            {hashtags.length > 0 && (
+              <div className="hashtags-container">
+                {hashtags.map((hashtag, index) => (
+                  <span key={index} className="hashtag-pill">
                     {hashtag}
                     <button
-                      type="button"
-                      className="hashtag-remove"
                       onClick={() => removeHashtag(hashtag)}
-                      disabled={submitting}
+                      className="remove-hashtag-btn"
                     >
-                      ×
+                      ✕
                     </button>
-                  </div>
+                  </span>
                 ))}
+              </div>
+            )}
+            <div className="post-actions">
+              <div className="post-tools">
+                <button onClick={handleImageClick} className="tool-btn">
+                  📷 Fotoğraf
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageChange}
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                />
+                <div className="hashtag-input-container">
+                  <input
+                    type="text"
+                    placeholder="Hashtag ekle"
+                    value={currentHashtag}
+                    onChange={handleHashtagChange}
+                    onKeyDown={handleHashtagKeyDown}
+                    ref={hashtagInputRef}
+                    className="hashtag-input"
+                  />
+                  {showSuggestions && suggestedHashtags.length > 0 && (
+                    <div className="hashtag-suggestions">
+                      {suggestedHashtags.map((suggestion, index) => (
+                        <div
+                          key={index}
+                          className="hashtag-suggestion"
+                          onClick={() => handleSuggestionClick(suggestion)}
+                        >
+                          {suggestion}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="post-buttons">
+                <button onClick={handleCancel} className="cancel-btn">
+                  İptal
+                </button>
+                <button
+                  onClick={handleSubmit}
+                  disabled={submitting || (!content.trim() && !image)}
+                  className="post-btn"
+                >
+                  {submitting ? 'Paylaşılıyor...' : 'Paylaş'}
+                </button>
               </div>
             </div>
           </div>
         ) : (
           <div
-            className="post-input modern-post-input"
+            className="post-input-placeholder"
             onClick={handleTextClick}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              background: '#f3f2ef',
-              borderRadius: 24,
-              padding: '10px 20px',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-              cursor: 'pointer',
-              minHeight: 48,
-              fontSize: 16,
-              color: '#666',
-              marginBottom: 0
-            }}
           >
-            <span style={{ opacity: 0.8 }}>
-              What's on your mind?
-            </span>
+            Ne düşünüyorsun?
           </div>
         )}
       </div>
-
-      {expanded && (
-        <div className="post-form-expanded">
-          {imagePreview && (
-            <div className="image-preview-container">
-              <img
-                src={imagePreview}
-                alt="Preview"
-                className="image-preview"
-              />
-              <button
-                className="remove-image-btn"
-                onClick={handleRemoveImage}
-                disabled={submitting}
-              >
-                &times;
-              </button>
-            </div>
-          )}
-
-          <div className="post-form-actions">
-            <div className="post-form-attachments">
-              <button
-                type="button"
-                className="attachment-btn"
-                onClick={handleImageClick}
-                disabled={submitting}
-              >
-                <span className="attachment-icon">📷</span>
-                <span>Photo</span>
-              </button>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleImageChange}
-                accept="image/*"
-                style={{ display: 'none' }}
-                disabled={submitting}
-              />
-            </div>
-
-            <div className="post-form-submit">
-              <button
-                type="button"
-                className="cancel-btn"
-                onClick={handleCancel}
-                disabled={submitting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="post-btn"
-                onClick={handleSubmit}
-                disabled={submitting || (content.trim() === '' && !image)}
-              >
-                {submitting ? 'Posting...' : 'Post'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

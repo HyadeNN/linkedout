@@ -14,37 +14,48 @@ export const register = async (userData) => {
   const { email, password, first_name, last_name } = userData;
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    
     // Update user profile with first and last name
     await updateProfile(userCredential.user, {
       displayName: `${first_name} ${last_name}`
     });
-    // Save user to local storage
-    localStorage.setItem('user', JSON.stringify({
-      email: userCredential.user.email,
-      displayName: userCredential.user.displayName,
-      uid: userCredential.user.uid
-    }));
-    // Firestore'a kullanıcıyı kaydet
+
+    // Create user document in Firestore
     await setDoc(doc(db, 'users', userCredential.user.uid), {
       name: `${first_name} ${last_name}`,
       email: userCredential.user.email,
-      createdAt: new Date(),
+      createdAt: new Date().toISOString(),
       profile: {
         profile_image: '',
         cover_image: '',
         about: ''
       },
+      profile_image: '',
+      cover_image: '',
       headline: '',
       location: '',
       bio: '',
+      connections: [],
+      sentFriendRequests: [],
+      friendRequests: [],
       experience: [],
       education: [],
       skill: [],
       activity: [],
       interest: []
     });
+
+    // Save user to local storage
+    const userData = {
+      email: userCredential.user.email,
+      displayName: userCredential.user.displayName,
+      uid: userCredential.user.uid
+    };
+    localStorage.setItem('user', JSON.stringify(userData));
+
     return { user: userCredential.user };
   } catch (error) {
+    console.error('Registration error:', error);
     throw error;
   }
 };
@@ -53,22 +64,31 @@ export const register = async (userData) => {
 export const login = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    
     // Save user to local storage
-    localStorage.setItem('user', JSON.stringify({
+    const userData = {
       email: userCredential.user.email,
       displayName: userCredential.user.displayName,
       uid: userCredential.user.uid
-    }));
+    };
+    localStorage.setItem('user', JSON.stringify(userData));
+    
     return { user: userCredential.user };
   } catch (error) {
+    console.error('Login error:', error);
     throw error;
   }
 };
 
 // Logout user
 export const logout = async () => {
-  await signOut(auth);
-  localStorage.removeItem('user');
+  try {
+    await signOut(auth);
+    localStorage.removeItem('user');
+  } catch (error) {
+    console.error('Logout error:', error);
+    throw error;
+  }
 };
 
 // Verify email

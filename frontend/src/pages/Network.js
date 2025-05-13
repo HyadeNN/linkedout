@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { connectionService, pageService, hashtagService, groupService, teammateService } from '../services';
+import { connectionService, pageService, hashtagService, teammateService, teamService } from '../services';
 import { useAuth } from '../contexts/AuthContext';
 import { FaLink, FaBell, FaUsers, FaLayerGroup, FaHashtag } from 'react-icons/fa';
 import './Network.css';
+import { collection, query, getDocs, where, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { db, auth } from '../firebase';
+import { Box, Grid, Typography, Container, CircularProgress, Alert, Card, CardContent, Avatar, Button, TextField } from '@mui/material';
+import UserCard from '../components/UserCard';
+import FriendRequests from '../components/FriendRequests';
+import { useConnection } from '../contexts/ConnectionContext';
 
 const Network = () => {
-  const [connections, setConnections] = useState([]);
   const [requests, setRequests] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [requestsLoading, setRequestsLoading] = useState(true);
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
-  const [selectedTab, setSelectedTab] = useState('received');
-  const [connectionsCount, setConnectionsCount] = useState(0);
+  const [selectedTab, setSelectedTab] = useState('connections');
   const [requestsCount, setRequestsCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const { user } = useAuth();
@@ -23,12 +27,109 @@ const Network = () => {
   const [hashtags, setHashtags] = useState([]);
   const [followedHashtags, setFollowedHashtags] = useState([]);
   const [newHashtag, setNewHashtag] = useState('');
-  const [groups, setGroups] = useState([]);
-  const [userGroups, setUserGroups] = useState([]);
-  const [newGroupName, setNewGroupName] = useState('');
   const [teammates, setTeammates] = useState([]);
   const [teammateInvites, setTeammateInvites] = useState([]);
   const [inviteUserId, setInviteUserId] = useState('');
+  const [users, setUsers] = useState([]);
+  const [friendRequests, setFriendRequests] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]);
+  const defaultProfileImage = '/default-avatar.jpg';
+  const [error, setError] = useState(null);
+  const { connections, setConnections, updateConnectionCount } = useConnection();
+  const [newTeamName, setNewTeamName] = useState('');
+  const [selectedConnections, setSelectedConnections] = useState([]);
+  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+
+  // Fetch all users except current user and already connected users
+  useEffect(() => {
+    const fetchUsers = async () => {
+      if (!auth.currentUser) {
+        console.log('No authenticated user');
+        setError('Please login to view users');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Get current user's data including connections and sent requests
+        const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+        const currentUserDoc = await getDoc(currentUserRef);
+        
+        if (!currentUserDoc.exists()) {
+          console.log('Current user document not found in Firestore');
+          // Create user document if it doesn't exist
+          const userData = {
+            name: auth.currentUser.displayName || '',
+            email: auth.currentUser.email || '',
+            profile: {
+              profile_image: '',
+              cover_image: '',
+              about: ''
+            },
+            connections: [],
+            sentFriendRequests: [],
+            friendRequests: []
+          };
+          await updateDoc(currentUserRef, userData);
+        }
+
+        const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() : {};
+        const connections = currentUserData?.connections || [];
+        setConnections(connections);
+        
+        // Fetch connection details
+        const connectionPromises = connections.map(async (connectionId) => {
+          const userDoc = await getDoc(doc(db, 'users', connectionId));
+          if (userDoc.exists()) {
+            return {
+              id: connectionId,
+              ...userDoc.data()
+            };
+          }
+          return null;
+        });
+        
+        const connectionDetails = await Promise.all(connectionPromises);
+        const validConnections = connectionDetails.filter(Boolean);
+        
+        // Get sent friend requests
+        const sentFriendRequests = currentUserData?.sentFriendRequests || [];
+        setSentRequests(sentFriendRequests);
+
+        // Query all users
+        const usersRef = collection(db, 'users');
+        const querySnapshot = await getDocs(usersRef);
+        
+        const usersData = [];
+        querySnapshot.forEach((doc) => {
+          // Skip current user and already connected users
+          if (doc.id !== auth.currentUser.uid && !connections.includes(doc.id)) {
+            const userData = doc.data();
+            usersData.push({
+              id: doc.id,
+              ...userData,
+              isRequestSent: sentFriendRequests.includes(doc.id)
+            });
+          }
+        });
+        
+        // Combine connection details with other users
+        setUsers([...validConnections, ...usersData]);
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        setError('Failed to load users. Please try again later.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (selectedTab === 'connections') {
+      fetchUsers();
+    }
+  }, [selectedTab]);
 
   // Fetch connections
   useEffect(() => {
@@ -37,7 +138,6 @@ const Network = () => {
         setLoading(true);
         const response = await connectionService.getConnections();
         setConnections(response.items);
-        setConnectionsCount(response.total);
       } catch (error) {
         console.error('Failed to fetch connections:', error);
       } finally {
@@ -86,7 +186,7 @@ const Network = () => {
   // Pages
   useEffect(() => {
     if (selectedTab === 'pages') {
-      pageService.getPages().then(setPages);
+      pageService.getUserPages().then(setPages);
       pageService.getFollowedPages().then(setFollowedPages);
     }
   }, [selectedTab]);
@@ -99,14 +199,6 @@ const Network = () => {
     }
   }, [selectedTab]);
 
-  // Groups
-  useEffect(() => {
-    if (selectedTab === 'groups') {
-      groupService.getGroups().then(setGroups);
-      groupService.getUserGroups().then(setUserGroups);
-    }
-  }, [selectedTab]);
-
   // Teammates
   useEffect(() => {
     if (selectedTab === 'teammates') {
@@ -114,6 +206,27 @@ const Network = () => {
       teammateService.getTeammateInvites().then(setTeammateInvites);
     }
   }, [selectedTab]);
+
+  // Fetch friend requests
+  useEffect(() => {
+    const fetchFriendRequests = async () => {
+      try {
+        const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+        const userDoc = await getDoc(currentUserRef);
+        
+        if (userDoc.exists()) {
+          const requests = userDoc.data().friendRequests || [];
+          setFriendRequests(requests);
+        }
+      } catch (error) {
+        console.error('Error fetching friend requests:', error);
+      }
+    };
+
+    if (auth.currentUser) {
+      fetchFriendRequests();
+    }
+  }, []);
 
   // Handle connect
   const handleConnect = async (userId) => {
@@ -134,23 +247,38 @@ const Network = () => {
   };
 
   // Handle accept request
-  const handleAcceptRequest = async (connectionId) => {
+  const handleAcceptRequest = async (requestUid) => {
     try {
       setActionLoading(true);
-      await connectionService.updateConnectionStatus(connectionId, 'accepted');
+      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+      const requestUserRef = doc(db, 'users', requestUid);
 
-      // Move from requests to connections
-      const acceptedRequest = requests.find(request => request.id === connectionId);
-      if (acceptedRequest) {
-        const updatedRequest = { ...acceptedRequest, status: 'accepted' };
-        setConnections(prevConnections => [...prevConnections, updatedRequest]);
-        setConnectionsCount(prevCount => prevCount + 1);
-        setRequests(prevRequests => prevRequests.filter(request => request.id !== connectionId));
-        setRequestsCount(prevCount => prevCount - 1);
+      // Get the request to remove
+      const currentUserDoc = await getDoc(currentUserRef);
+      const friendRequests = currentUserDoc.data()?.friendRequests || [];
+      const requestToRemove = friendRequests.find(req => req.uid === requestUid);
+
+      if (requestToRemove) {
+        // Remove the request
+        await updateDoc(currentUserRef, {
+          friendRequests: arrayRemove(requestToRemove),
+          connections: arrayUnion(requestUid)
+        });
+
+        // Add to requester's connections
+        await updateDoc(requestUserRef, {
+          connections: arrayUnion(auth.currentUser.uid)
+        });
+
+        // Update local states
+        setFriendRequests(prev => prev.filter(req => req.uid !== requestUid));
+        
+        // Update global connection count
+        await updateConnectionCount();
       }
     } catch (error) {
-      console.error('Failed to accept connection request:', error);
-      alert('Failed to accept connection request. Please try again.');
+      console.error('Failed to accept friend request:', error);
+      alert('Failed to accept friend request. Please try again.');
     } finally {
       setActionLoading(false);
     }
@@ -177,11 +305,23 @@ const Network = () => {
   const handleRemoveConnection = async (connectionId) => {
     try {
       setActionLoading(true);
-      await connectionService.deleteConnection(connectionId);
+      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+      const connectionUserRef = doc(db, 'users', connectionId);
 
-      // Remove from connections
-      setConnections(prevConnections => prevConnections.filter(connection => connection.id !== connectionId));
-      setConnectionsCount(prevCount => prevCount - 1);
+      // Remove from both users' connections
+      await updateDoc(currentUserRef, {
+        connections: arrayRemove(connectionId)
+      });
+      await updateDoc(connectionUserRef, {
+        connections: arrayRemove(auth.currentUser.uid)
+      });
+
+      // Update local state
+      setConnections(prev => prev.filter(id => id !== connectionId));
+      
+      // Update global connection count
+      await updateConnectionCount();
+
     } catch (error) {
       console.error('Failed to remove connection:', error);
       alert('Failed to remove connection. Please try again.');
@@ -198,10 +338,16 @@ const Network = () => {
   // Pages
   const handleCreatePage = async () => {
     if (!newPageName) return;
-    await pageService.createPage({ name: newPageName });
-    setNewPageName('');
-    const all = await pageService.getPages();
-    setPages(all);
+    try {
+      await pageService.createPage({ name: newPageName });
+      setNewPageName('');
+      // Refresh pages list
+      const userPages = await pageService.getUserPages();
+      setPages(userPages);
+    } catch (error) {
+      console.error('Error creating page:', error);
+      alert('Failed to create page. Please try again.');
+    }
   };
 
   const handleFollowPage = async (pageId) => {
@@ -232,24 +378,6 @@ const Network = () => {
     setFollowedHashtags(await hashtagService.getFollowedHashtags());
   };
 
-  // Groups
-  const handleCreateGroup = async () => {
-    if (!newGroupName) return;
-    await groupService.createGroup({ name: newGroupName });
-    setNewGroupName('');
-    setGroups(await groupService.getGroups());
-  };
-
-  const handleJoinGroup = async (groupId) => {
-    await groupService.joinGroup(groupId);
-    setUserGroups(await groupService.getUserGroups());
-  };
-
-  const handleLeaveGroup = async (userGroupId) => {
-    await groupService.leaveGroup(userGroupId);
-    setUserGroups(await groupService.getUserGroups());
-  };
-
   // Teammates
   const handleSendTeammateInvite = async () => {
     if (!inviteUserId) return;
@@ -274,302 +402,526 @@ const Network = () => {
     setTeammates(await teammateService.getTeammates());
   };
 
+  const handleSendFriendRequest = async (targetUserId) => {
+    try {
+      const targetUserRef = doc(db, 'users', targetUserId);
+      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+      
+      // Get current user's data
+      const currentUserDoc = await getDoc(currentUserRef);
+      const currentUserData = currentUserDoc.data();
+
+      // Add friend request to target user's friendRequests
+      await updateDoc(targetUserRef, {
+        friendRequests: arrayUnion({
+          uid: auth.currentUser.uid,
+          name: currentUserData.name,
+          profile_image: currentUserData.profile?.profile_image || '/default-avatar.jpg',
+          headline: currentUserData.headline,
+          status: 'pending',
+          timestamp: new Date().toISOString()
+        })
+      });
+
+      // Add to current user's sent requests
+      await updateDoc(currentUserRef, {
+        sentFriendRequests: arrayUnion(targetUserId)
+      });
+
+      // Update local state
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === targetUserId
+            ? { ...user, isRequestSent: true }
+            : user
+        )
+      );
+
+      alert('Friend request sent successfully!');
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+      alert('Failed to send friend request. Please try again.');
+    }
+  };
+
+  const handleCancelRequest = async (targetUserId) => {
+    try {
+      const targetUserRef = doc(db, 'users', targetUserId);
+      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
+
+      // Remove friend request from target user's friendRequests
+      await updateDoc(targetUserRef, {
+        friendRequests: arrayRemove({
+          uid: auth.currentUser.uid,
+          status: 'pending'
+        })
+      });
+
+      // Remove from current user's sent requests
+      await updateDoc(currentUserRef, {
+        sentFriendRequests: arrayRemove(targetUserId)
+      });
+
+      // Update local state
+      setUsers(prevUsers =>
+        prevUsers.map(user =>
+          user.id === targetUserId
+            ? { ...user, isRequestSent: false }
+            : user
+        )
+      );
+
+      alert('Friend request cancelled successfully!');
+    } catch (error) {
+      console.error('Error cancelling friend request:', error);
+      alert('Failed to cancel friend request. Please try again.');
+    }
+  };
+
+  // Handle team creation
+  const handleCreateTeam = async () => {
+    if (!newTeamName) {
+      alert('Please enter a team name');
+      return;
+    }
+    if (selectedConnections.length === 0) {
+      alert('Please select at least one connection for your team');
+      return;
+    }
+
+    try {
+      setIsCreatingTeam(true);
+      await teamService.createTeam({
+        name: newTeamName,
+        description: '',
+        members: selectedConnections
+      });
+      
+      // Reset form
+      setNewTeamName('');
+      setSelectedConnections([]);
+      
+      // Refresh teammates list
+      const updatedTeammates = await teammateService.getTeammates();
+      setTeammates(updatedTeammates);
+      
+      alert('Team created successfully!');
+    } catch (error) {
+      console.error('Error creating team:', error);
+      alert('Failed to create team. Please try again.');
+    } finally {
+      setIsCreatingTeam(false);
+    }
+  };
+
+  const handleConnectionSelect = (connectionId) => {
+    setSelectedConnections(prev => 
+      prev.includes(connectionId)
+        ? prev.filter(id => id !== connectionId)
+        : [...prev, connectionId]
+    );
+  };
+
+  const renderContent = () => {
+    switch (selectedTab) {
+      case 'connections':
+        return (
+          <>
+            {/* Existing Connections Section */}
+            <Typography variant="h5" gutterBottom>
+              Your Connections ({connections.length})
+            </Typography>
+            
+            {loading ? (
+              <Box display="flex" justifyContent="center" my={4}>
+                <CircularProgress />
+              </Box>
+            ) : connections.length === 0 ? (
+              <Typography color="text.secondary" align="center" sx={{ my: 4 }}>
+                You don't have any connections yet.
+              </Typography>
+            ) : (
+              <Grid container spacing={3} sx={{ mb: 6 }}>
+                {connections.map((connection) => (
+                  <Grid item xs={12} sm={6} md={4} key={connection}>
+                    <UserCard 
+                      user={users.find(u => u.id === connection) || {
+                        id: connection,
+                        name: "Loading...",
+                        headline: "",
+                        profile: { profile_image: defaultProfileImage }
+                      }}
+                      isConnection={true}
+                      onRemoveConnection={() => handleRemoveConnection(connection)}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+
+            {/* People You May Know Section */}
+            <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
+              People You May Know
+            </Typography>
+            
+            {loading ? (
+              <Box display="flex" justifyContent="center" my={4}>
+                <CircularProgress />
+              </Box>
+            ) : users.length === 0 ? (
+              <Typography color="text.secondary" align="center" sx={{ my: 4 }}>
+                No suggestions available at the moment.
+              </Typography>
+            ) : (
+              <Grid container spacing={3}>
+                {users.map((user) => (
+                  <Grid item xs={12} sm={6} md={4} key={user.id}>
+                    <UserCard 
+                      user={user}
+                      onSendRequest={() => handleSendFriendRequest(user.id)}
+                      onCancelRequest={() => handleCancelRequest(user.id)}
+                      isRequestSent={user.isRequestSent}
+                    />
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </>
+        );
+
+      case 'invitations':
+        return (
+          <Box mb={4}>
+            <Typography variant="h5" gutterBottom>
+              Friend Requests ({friendRequests.length})
+            </Typography>
+            <FriendRequests requests={friendRequests} />
+          </Box>
+        );
+
+      case 'teammates':
+        return (
+          <Box>
+            {/* Team Creation Form */}
+            <Card sx={{ mb: 4, p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Create New Team
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <TextField
+                  fullWidth
+                  label="Team Name"
+                  value={newTeamName}
+                  onChange={(e) => setNewTeamName(e.target.value)}
+                  sx={{ mb: 2 }}
+                />
+                <Typography variant="subtitle1" gutterBottom>
+                  Select Team Members:
+                </Typography>
+                <Grid container spacing={2}>
+                  {connections.map((connectionId) => {
+                    const connection = users.find(u => u.id === connectionId);
+                    if (!connection) return null;
+                    
+                    return (
+                      <Grid item xs={12} sm={6} md={4} key={connectionId}>
+                        <Card 
+                          sx={{ 
+                            border: selectedConnections.includes(connectionId) ? 2 : 0,
+                            borderColor: 'primary.main',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => handleConnectionSelect(connectionId)}
+                        >
+                          <CardContent>
+                            <Box display="flex" alignItems="center">
+                              <Avatar 
+                                src={connection.profile?.profile_image || defaultProfileImage} 
+                                sx={{ mr: 2 }}
+                              />
+                              <Box>
+                                <Typography variant="subtitle1">
+                                  {connection.name}
+                                </Typography>
+                                <Typography variant="body2" color="textSecondary">
+                                  {connection.headline}
+                                </Typography>
+                              </Box>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </Box>
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={handleCreateTeam}
+                disabled={isCreatingTeam || !newTeamName || selectedConnections.length === 0}
+                sx={{ mt: 2 }}
+              >
+                {isCreatingTeam ? <CircularProgress size={24} /> : 'Create Team'}
+              </Button>
+            </Card>
+
+            {/* Existing Teammates Section */}
+            <Typography variant="h5" gutterBottom>
+              Your Teammates
+            </Typography>
+            {teammates.length > 0 ? (
+              <Grid container spacing={3}>
+                {teammates.map((teammate) => (
+                  <Grid item xs={12} sm={6} md={4} key={teammate.id}>
+                    <Card>
+                      <CardContent>
+                        <Box display="flex" alignItems="center" mb={2}>
+                          <Avatar src={teammate.profile_image || defaultProfileImage} />
+                          <Box ml={2}>
+                            <Typography variant="h6">{teammate.name}</Typography>
+                            <Typography variant="body2" color="textSecondary">
+                              {teammate.role}
+                            </Typography>
+                          </Box>
+                        </Box>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          fullWidth
+                          onClick={() => handleRemoveTeammate(teammate.id)}
+                        >
+                          Remove Teammate
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <Typography color="textSecondary">No teammates yet</Typography>
+            )}
+
+            <Box mt={4}>
+              <Typography variant="h5" gutterBottom>
+                Teammate Invites
+              </Typography>
+              {teammateInvites.map((invite) => (
+                <Card key={invite.id} sx={{ mb: 2 }}>
+                  <CardContent>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                      <Box>
+                        <Typography variant="h6">{invite.name}</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {invite.role}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={() => handleAcceptTeammateInvite(invite.id)}
+                          sx={{ mr: 1 }}
+                        >
+                          Accept
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={() => handleRejectTeammateInvite(invite.id)}
+                        >
+                          Reject
+                        </Button>
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          </Box>
+        );
+
+      case 'pages':
+        return (
+          <Box>
+            <Typography variant="h5" gutterBottom>
+              Your Pages
+            </Typography>
+            {loading ? (
+              <CircularProgress />
+            ) : (
+              <Grid container spacing={3}>
+                {pages.map((page) => (
+                  <Grid item xs={12} sm={6} md={4} key={page.id}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6">{page.name}</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {page.followerCount} followers
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          fullWidth
+                          sx={{ mt: 2 }}
+                          onClick={() => handleUnfollowPage(page.id)}
+                        >
+                          Unfollow
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+
+            <Box mt={4}>
+              <Typography variant="h5" gutterBottom>
+                Suggested Pages
+              </Typography>
+              <Grid container spacing={3}>
+                {pages.map((page) => (
+                  <Grid item xs={12} sm={6} md={4} key={page.id}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6">{page.name}</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {page.followerCount} followers
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          fullWidth
+                          sx={{ mt: 2 }}
+                          onClick={() => handleFollowPage(page.id)}
+                        >
+                          Follow
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          </Box>
+        );
+
+      case 'hashtags':
+        return (
+          <Box>
+            <Typography variant="h5" gutterBottom>
+              Your Hashtags
+            </Typography>
+            {followedHashtags.length > 0 ? (
+              <Grid container spacing={3}>
+                {followedHashtags.map((hashtag) => (
+                  <Grid item xs={12} sm={6} md={4} key={hashtag.id}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6">#{hashtag.name}</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {hashtag.posts} posts
+                        </Typography>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          fullWidth
+                          sx={{ mt: 2 }}
+                          onClick={() => handleUnfollowHashtag(hashtag.id)}
+                        >
+                          Unfollow
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <Typography color="textSecondary">You don't follow any hashtags yet</Typography>
+            )}
+
+            <Box mt={4}>
+              <Typography variant="h5" gutterBottom>
+                Trending Hashtags
+              </Typography>
+              <Grid container spacing={3}>
+                {hashtags.map((hashtag) => (
+                  <Grid item xs={12} sm={6} md={4} key={hashtag.id}>
+                    <Card>
+                      <CardContent>
+                        <Typography variant="h6">#{hashtag.name}</Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          {hashtag.posts} posts
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          fullWidth
+                          sx={{ mt: 2 }}
+                          onClick={() => handleFollowHashtag(hashtag.id)}
+                        >
+                          Follow
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          </Box>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="network-modern-layout">
       <aside className="network-modern-sidebar">
         <ul className="network-modern-links">
-          <li className={selectedTab === 'connections' ? 'active' : ''} onClick={() => handleTabChange('connections')}>
-            <FaLink /> Connections <span>{connectionsCount}</span>
+          <li 
+            className={selectedTab === 'connections' ? 'active' : ''} 
+            onClick={() => setSelectedTab('connections')}
+          >
+            <FaLink /> Connections <span>{connections.length}</span>
           </li>
-          <li className={selectedTab === 'requests' ? 'active' : ''} onClick={() => handleTabChange('requests')}>
-            <FaBell /> Invitations <span className={requestsCount > 0 ? 'highlight' : ''}>{requestsCount}</span>
+          <li 
+            className={selectedTab === 'invitations' ? 'active' : ''} 
+            onClick={() => setSelectedTab('invitations')}
+          >
+            <FaBell /> Invitations <span>{friendRequests.length}</span>
           </li>
-          <li className={selectedTab === 'teammates' ? 'active' : ''} onClick={() => handleTabChange('teammates')}>
+          <li 
+            className={selectedTab === 'teammates' ? 'active' : ''} 
+            onClick={() => setSelectedTab('teammates')}
+          >
             <FaUsers /> Teammates
           </li>
-          <li className={selectedTab === 'groups' ? 'active' : ''} onClick={() => handleTabChange('groups')}>
-            <FaUsers /> Groups <span>6</span>
-          </li>
-          <li className={selectedTab === 'pages' ? 'active' : ''} onClick={() => handleTabChange('pages')}>
+          <li 
+            className={selectedTab === 'pages' ? 'active' : ''} 
+            onClick={() => setSelectedTab('pages')}
+          >
             <FaLayerGroup /> Pages <span>28</span>
           </li>
-          <li className={selectedTab === 'hashtags' ? 'active' : ''} onClick={() => handleTabChange('hashtags')}>
+          <li 
+            className={selectedTab === 'hashtags' ? 'active' : ''} 
+            onClick={() => setSelectedTab('hashtags')}
+          >
             <FaHashtag /> Hashtags <span>8</span>
           </li>
         </ul>
       </aside>
+      
       <section className="network-modern-content">
-        {selectedTab === 'requests' && (
-          <>
-            <div className="network-modern-tabs">
-              <button className={selectedTab === 'received' ? 'active' : ''} onClick={() => setSelectedTab('received')}>RECEIVED</button>
-              <button className={selectedTab === 'sent' ? 'active' : ''} onClick={() => setSelectedTab('sent')}>SENT</button>
-            </div>
-            <div className="network-modern-divider" />
-            <div className="network-modern-new-connections">
-              YOU HAVE <span>{requestsCount} NEW CONNECTION{requestsCount !== 1 ? 'S' : ''}</span>
-            </div>
-            {requestsLoading ? (
-              <div className="loading-indicator">Loading invitations...</div>
-            ) : requests.length === 0 ? (
-              <div className="empty-state">
-                <h3>No pending invitations</h3>
-                <p>When someone invites you to connect, you'll see it here.</p>
-              </div>
-            ) : (
-              requests.map(request => (
-                <div key={request.id} className="network-modern-request-card">
-                  <img src={request.sender.profile?.profile_image || '/default-avatar.jpg'} alt="avatar" className="network-modern-avatar" />
-                  <div className="network-modern-request-info">
-                    <div className="network-modern-request-name">{request.sender.first_name} {request.sender.last_name}</div>
-                    <div className="network-modern-request-headline">{request.sender.profile?.headline || 'No headline'}</div>
-                    <div className="network-modern-request-connections">{request.sender.profile?.connections_count || 0} connections</div>
-                    {request.message && <div className="network-modern-request-message">{request.message}</div>}
-                  </div>
-                  <div className="network-modern-request-actions">
-                    <button className="accept-btn" onClick={() => handleAcceptRequest(request.id)} disabled={actionLoading}>ACCEPT</button>
-                    <button className="decline-btn" onClick={() => handleIgnoreRequest(request.id)} disabled={actionLoading}>DECLINE</button>
-                  </div>
-                </div>
-              ))
-            )}
-            <div className="network-modern-divider" />
-            <div className="network-modern-recent-header">RECENT CONNECTIONS</div>
-            <div className="network-modern-recent-grid">
-              {connections.slice(0, 4).map(connection => (
-                <div key={connection.id} className="network-modern-recent-card">
-                  <img src={connection.user.profile?.profile_image || '/default-avatar.jpg'} alt="avatar" className="network-modern-avatar" />
-                  <div className="network-modern-recent-info">
-                    <div className="network-modern-recent-name">{connection.user.first_name} {connection.user.last_name}</div>
-                    <div className="network-modern-recent-headline">{connection.user.profile?.headline || 'No headline'}</div>
-                    <div className="network-modern-recent-date">{new Date(connection.updatedAt).toLocaleDateString()}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-        {selectedTab === 'connections' && (
-          <div className="connections-tab">
-            <h1 className="page-title">Connections</h1>
-
-            {loading ? (
-              <div className="loading-indicator">Loading connections...</div>
-            ) : connections.length === 0 ? (
-              <div className="empty-state">
-                <h3>No connections yet</h3>
-                <p>Connect with professionals to grow your network.</p>
-              </div>
-            ) : (
-              <div className="connections-list">
-                {connections.map(connection => {
-                  const connectionUser = connection.user;
-
-                  return (
-                    <div key={connection.id} className="connection-card">
-                      <div className="connection-avatar">
-                        <Link to={`/users/${connectionUser.id}`}>
-                          <img
-                            src={connectionUser.profile?.profile_image || '/default-avatar.jpg'}
-                            alt={`${connectionUser.first_name} ${connectionUser.last_name}`}
-                          />
-                        </Link>
-                      </div>
-
-                      <div className="connection-info">
-                        <h3 className="connection-name">
-                          <Link to={`/users/${connectionUser.id}`}>
-                            {connectionUser.first_name} {connectionUser.last_name}
-                          </Link>
-                        </h3>
-                        <p className="connection-headline">
-                          {connectionUser.profile?.headline || 'No headline'}
-                        </p>
-                        <p className="connection-date">
-                          Connected since {new Date(connection.updatedAt).toLocaleDateString()}
-                        </p>
-                      </div>
-
-                      <div className="connection-actions">
-                        <button className="message-btn">Message</button>
-                        <button
-                          className="remove-btn"
-                          onClick={() => handleRemoveConnection(connection.id)}
-                          disabled={actionLoading}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {selectedTab === 'teammates' && (
-          <div className="network-section">
-            <h1 className="section-title">Teammates</h1>
-            <div className="network-form-row">
-              <input className="network-input" value={inviteUserId} onChange={e => setInviteUserId(e.target.value)} placeholder="User ID to invite" />
-              <button className="network-btn primary" onClick={handleSendTeammateInvite}>Send Invite</button>
-            </div>
-            <h2 className="section-subtitle">Teammate Invites</h2>
-            <div className="network-card-list">
-              {teammateInvites.length === 0 ? <div className="network-empty">No invites.</div> : teammateInvites.map(invite => (
-                <div className="network-card" key={invite.id}>
-                  <div className="network-card-title">{invite.userIds.join(', ')} - {invite.status}</div>
-                  <button className="network-btn primary" onClick={() => handleAcceptTeammateInvite(invite.id)}>Accept</button>
-                  <button className="network-btn danger" onClick={() => handleRejectTeammateInvite(invite.id)}>Reject</button>
-                </div>
-              ))}
-            </div>
-            <h2 className="section-subtitle">Teammates</h2>
-            <div className="network-card-list">
-              {teammates.length === 0 ? <div className="network-empty">No teammates yet.</div> : teammates.map(tm => (
-                <div className="network-card" key={tm.id}>
-                  <div className="network-card-title">{tm.userIds.join(', ')}</div>
-                  <button className="network-btn danger" onClick={() => handleRemoveTeammate(tm.id)}>Remove</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {selectedTab === 'groups' && (
-          <div className="network-section">
-            <h1 className="section-title">Groups</h1>
-            <div className="network-form-row">
-              <input className="network-input" value={newGroupName} onChange={e => setNewGroupName(e.target.value)} placeholder="New group name" />
-              <button className="network-btn primary" onClick={handleCreateGroup}>Create Group</button>
-            </div>
-            <h2 className="section-subtitle">All Groups</h2>
-            <div className="network-card-list">
-              {groups.length === 0 ? <div className="network-empty">No groups found.</div> : groups.map(group => (
-                <div className="network-card" key={group.id}>
-                  <div className="network-card-title">{group.name}</div>
-                  <button className="network-btn" onClick={() => handleJoinGroup(group.id)}>Join</button>
-                </div>
-              ))}
-            </div>
-            <h2 className="section-subtitle">Joined Groups</h2>
-            <div className="network-card-list">
-              {userGroups.length === 0 ? <div className="network-empty">You have not joined any groups.</div> : userGroups.map(ug => (
-                <div className="network-card" key={ug.id}>
-                  <div className="network-card-title">{ug.groupId}</div>
-                  <button className="network-btn danger" onClick={() => handleLeaveGroup(ug.id)}>Leave</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {selectedTab === 'pages' && (
-          <div className="network-section">
-            <h1 className="section-title">Pages</h1>
-            <div className="network-form-row">
-              <input className="network-input" value={newPageName} onChange={e => setNewPageName(e.target.value)} placeholder="New page name" />
-              <button className="network-btn primary" onClick={handleCreatePage}>Create Page</button>
-            </div>
-            <h2 className="section-subtitle">All Pages</h2>
-            <div className="network-card-list">
-              {pages.length === 0 ? <div className="network-empty">No pages found.</div> : pages.map(page => (
-                <div className="network-card" key={page.id}>
-                  <div className="network-card-title">{page.name}</div>
-                  <button className="network-btn" onClick={() => handleFollowPage(page.id)}>Follow</button>
-                </div>
-              ))}
-            </div>
-            <h2 className="section-subtitle">Followed Pages</h2>
-            <div className="network-card-list">
-              {followedPages.length === 0 ? <div className="network-empty">You are not following any pages.</div> : followedPages.map(up => (
-                <div className="network-card" key={up.id}>
-                  <div className="network-card-title">{up.pageId}</div>
-                  <button className="network-btn danger" onClick={() => handleUnfollowPage(up.id)}>Unfollow</button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {selectedTab === 'hashtags' && (
-          <div className="network-section">
-            <h1 className="section-title">Hashtags</h1>
-            <div className="network-form-row">
-              <input className="network-input" value={newHashtag} onChange={e => setNewHashtag(e.target.value)} placeholder="New hashtag name" />
-              <button className="network-btn primary" onClick={handleCreateHashtag}>Create Hashtag</button>
-            </div>
-            <h2 className="section-subtitle">All Hashtags</h2>
-            <div className="network-card-list">
-              {hashtags.length === 0 ? <div className="network-empty">No hashtags found.</div> : hashtags.map(hashtag => (
-                <div className="network-card" key={hashtag.id}>
-                  <div className="network-card-title">#{hashtag.name}</div>
-                  <button className="network-btn" onClick={() => handleFollowHashtag(hashtag.id)}>Follow</button>
-                </div>
-              ))}
-            </div>
-            <h2 className="section-subtitle">Followed Hashtags</h2>
-            <div className="network-card-list">
-              {followedHashtags.length === 0 ? <div className="network-empty">You are not following any hashtags.</div> : followedHashtags.map(uh => {
-                const hashtag = hashtags.find(h => h.id === uh.hashtagId);
-                return (
-                  <div className="network-card" key={uh.id}>
-                    <div className="network-card-title">{hashtag ? `#${hashtag.name}` : uh.hashtagId}</div>
-                    <button className="network-btn danger" onClick={() => handleUnfollowHashtag(uh.id)}>Unfollow</button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Connection Suggestions Section (always visible) */}
-        <div className="suggestions-section">
-          <h2 className="section-title">People you may know</h2>
-
-          {suggestionsLoading ? (
-            <div className="loading-indicator">Loading suggestions...</div>
-          ) : suggestions.length === 0 ? (
-            <div className="empty-suggestions">
-              <p>No suggestions available at the moment.</p>
-            </div>
-          ) : (
-            <div className="suggestions-grid">
-              {suggestions.map(suggestion => (
-                <div key={suggestion.id} className="suggestion-card">
-                  <div className="suggestion-header">
-                    <Link to={`/users/${suggestion.id}`}>
-                      <img
-                        src={suggestion.profile?.profile_image || '/default-avatar.jpg'}
-                        alt={`${suggestion.first_name} ${suggestion.last_name}`}
-                        className="suggestion-avatar"
-                      />
-                    </Link>
-                  </div>
-
-                  <div className="suggestion-body">
-                    <h3 className="suggestion-name">
-                      <Link to={`/users/${suggestion.id}`}>
-                        {suggestion.first_name} {suggestion.last_name}
-                      </Link>
-                    </h3>
-                    <p className="suggestion-headline">
-                      {suggestion.profile?.headline || 'No headline'}
-                    </p>
-                    <button
-                      className="connect-btn"
-                      onClick={() => handleConnect(suggestion.id)}
-                      disabled={actionLoading}
-                    >
-                      Connect
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <Container maxWidth="lg" sx={{ py: 4 }}>
+          {error && (
+            <Alert severity="error" sx={{ mb: 3 }}>
+              {error}
+            </Alert>
           )}
-        </div>
+          {renderContent()}
+        </Container>
       </section>
     </div>
   );
