@@ -5,25 +5,53 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Create a post
 export const createPost = async (userId, { content, image, hashtags = [] }) => {
-  let imageUrl = '';
-  if (image) {
-    const imageRef = ref(storage, `posts/${userId}/${uuidv4()}-${image.name}`);
-    await uploadBytes(imageRef, image);
-    imageUrl = await getDownloadURL(imageRef);
+  try {
+    let imageUrl = '';
+    if (image) {
+      const imageRef = ref(storage, `posts/${userId}/${uuidv4()}-${image.name}`);
+      await uploadBytes(imageRef, image);
+      imageUrl = await getDownloadURL(imageRef);
+    }
+
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userData = userDoc.data();
+
+    const postData = {
+      userId,
+      content,
+      imageUrl,
+      hashtags,
+      createdAt: serverTimestamp(),
+      likes_count: 0,
+      comments_count: 0
+    };
+
+    const docRef = await addDoc(collection(db, 'posts'), postData);
+    return {
+      id: docRef.id,
+      ...postData,
+      user: {
+        id: userId,
+        name: userData?.name || '',
+        headline: userData?.headline || '',
+        location: userData?.location || '',
+        bio: userData?.bio || '',
+        profile: {
+          about: userData?.profile?.about || '',
+          profile_image: userData?.profile?.profile_image || '',
+          cover_image: userData?.profile?.cover_image || ''
+        },
+        activity: userData?.activity || [],
+        education: userData?.education || [],
+        experience: userData?.experience || [],
+        interest: userData?.interest || [],
+        skill: userData?.skill || []
+      }
+    };
+  } catch (error) {
+    console.error('Error creating post:', error);
+    throw error;
   }
-
-  const postData = {
-    userId,
-    content,
-    imageUrl,
-    hashtags,
-    createdAt: serverTimestamp(),
-    likes_count: 0,
-    comments_count: 0
-  };
-
-  const docRef = await addDoc(collection(db, 'posts'), postData);
-  return { id: docRef.id, ...postData };
 };
 
 // Update a post
@@ -43,25 +71,96 @@ export const getPost = async (postId) => {
   throw new Error('Method not implemented');
 };
 
-// Get feed posts
+// Get feed posts with user data
 export const getFeedPosts = async () => {
-  const q = query(
-    collection(db, 'posts'),
-    orderBy('createdAt', 'desc')
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const q = query(
+      collection(db, 'posts'),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    
+    // Get posts with user data
+    const postsWithUserData = await Promise.all(
+      snapshot.docs.map(async (postDoc) => {
+        const postData = postDoc.data();
+        const userDoc = await getDoc(doc(db, 'users', postData.userId));
+        const userData = userDoc.data();
+        
+        return {
+          id: postDoc.id,
+          ...postData,
+          user: {
+            id: postData.userId,
+            name: userData?.name || '',
+            headline: userData?.headline || '',
+            location: userData?.location || '',
+            bio: userData?.bio || '',
+            profile: {
+              about: userData?.profile?.about || '',
+              profile_image: userData?.profile?.profile_image || '',
+              cover_image: userData?.profile?.cover_image || ''
+            },
+            activity: userData?.activity || [],
+            education: userData?.education || [],
+            experience: userData?.experience || [],
+            interest: userData?.interest || [],
+            skill: userData?.skill || []
+          },
+          createdAt: postData.createdAt?.toDate()
+        };
+      })
+    );
+
+    return postsWithUserData;
+  } catch (error) {
+    console.error('Error getting feed posts:', error);
+    throw error;
+  }
 };
 
-// Get user posts
+// Get user posts with user data
 export const getUserPosts = async (userId) => {
-  const q = query(
-    collection(db, 'posts'),
-    where('userId', '==', userId),
-    orderBy('createdAt', 'desc')
-  );
-  const snapshot = await getDocs(q);
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  try {
+    const q = query(
+      collection(db, 'posts'),
+      where('userId', '==', userId),
+      orderBy('createdAt', 'desc')
+    );
+    const snapshot = await getDocs(q);
+    
+    // Get user data once since all posts are from same user
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    const userData = userDoc.data();
+    
+    const posts = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data(),
+      user: {
+        id: userId,
+        name: userData?.name || '',
+        headline: userData?.headline || '',
+        location: userData?.location || '',
+        bio: userData?.bio || '',
+        profile: {
+          about: userData?.profile?.about || '',
+          profile_image: userData?.profile?.profile_image || '',
+          cover_image: userData?.profile?.cover_image || ''
+        },
+        activity: userData?.activity || [],
+        education: userData?.education || [],
+        experience: userData?.experience || [],
+        interest: userData?.interest || [],
+        skill: userData?.skill || []
+      },
+      createdAt: doc.data().createdAt?.toDate()
+    }));
+
+    return posts;
+  } catch (error) {
+    console.error('Error getting user posts:', error);
+    throw error;
+  }
 };
 
 // Search posts and hashtags
@@ -141,7 +240,7 @@ export const getComments = async (postId) => {
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 };
 
-// Get posts with optional filters
+// Get posts with filters and user data
 export const getPosts = async (filters = {}) => {
   try {
     let postsQuery = collection(db, 'posts');
@@ -157,11 +256,40 @@ export const getPosts = async (filters = {}) => {
     }
 
     const snapshot = await getDocs(postsQuery);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate()
-    }));
+    
+    // Get posts with user data
+    const postsWithUserData = await Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const postData = doc.data();
+        const userDoc = await getDoc(doc(db, 'users', postData.userId));
+        const userData = userDoc.data();
+        
+        return {
+          id: doc.id,
+          ...postData,
+          user: {
+            id: postData.userId,
+            name: userData?.name || '',
+            headline: userData?.headline || '',
+            location: userData?.location || '',
+            bio: userData?.bio || '',
+            profile: {
+              about: userData?.profile?.about || '',
+              profile_image: userData?.profile?.profile_image || '',
+              cover_image: userData?.profile?.cover_image || ''
+            },
+            activity: userData?.activity || [],
+            education: userData?.education || [],
+            experience: userData?.experience || [],
+            interest: userData?.interest || [],
+            skill: userData?.skill || []
+          },
+          createdAt: postData.createdAt?.toDate()
+        };
+      })
+    );
+
+    return postsWithUserData;
   } catch (error) {
     console.error('Error getting posts:', error);
     throw error;

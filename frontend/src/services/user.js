@@ -65,3 +65,40 @@ export const searchUsers = async (query, page = 1, limit = 20) => {
   });
   return response.data;
 };
+
+export const getCurrentUserData = async (userId) => {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (!userDoc.exists()) {
+      throw new Error('User not found');
+    }
+    
+    const userData = userDoc.data();
+    console.log("Raw Firebase user data:", userData); // Debug için eklendi
+    
+    // Firebase'den gelen veriyi doğru şekilde yapılandır
+    const formattedData = {
+      id: userId,
+      name: userData?.name || '',
+      headline: userData?.headline || '',
+      location: userData?.location || '',
+      bio: userData?.bio || '',
+      profile: {
+        about: userData?.profile?.about || '',
+        profile_image: userData?.profile?.profile_image || null,
+        cover_image: userData?.profile?.cover_image || null
+      },
+      activity: userData?.activity || [],
+      education: userData?.education || [],
+      experience: userData?.experience || [],
+      interest: userData?.interest || [],
+      skill: userData?.skill || []
+    };
+    
+    console.log("Formatted user data:", formattedData); // Debug için eklendi
+    return formattedData;
+  } catch (error) {
+    console.error('Error fetching user data:', error);
+    throw error;
+  }
+};

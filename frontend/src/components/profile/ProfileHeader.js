@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../../firebase';
+import { FiEdit2 } from 'react-icons/fi';
+import { profileService } from '../../services/profile';
 import './ProfileHeader.css';
 
 const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFieldChange, onSaveProfile }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [formData, setFormData] = useState({
     name: profile?.name || '',
     headline: profile?.headline || '',
@@ -27,17 +27,14 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
+      await profileService.updateProfile({
         name: formData.name,
         headline: formData.headline,
         location: formData.location,
         bio: formData.bio,
         profile: {
           ...profile?.profile,
-          about: formData.about,
-          profile_image: profile?.profile?.profile_image || '',
-          cover_image: profile?.profile?.cover_image || ''
+          about: formData.about
         }
       });
       setIsEditing(false);
@@ -50,17 +47,13 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
   const handlePhotoUpload = async (e, type) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    setIsUploading(true);
     try {
-      const storageRef = ref(storage, `${type}/${user.uid}/${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(snapshot.ref);
-      const userRef = doc(db, 'users', user.uid);
-      await updateDoc(userRef, {
-        profile: {
-          ...profile?.profile,
-          [type === 'profile' ? 'profile_image' : 'cover_image']: downloadURL
-        }
-      });
+      const url = type === 'profile' 
+        ? await profileService.uploadProfileImage(file)
+        : await profileService.uploadCoverImage(file);
+
       if (type === 'profile') {
         onProfileImageChange({ target: { files: [file] } });
       } else {
@@ -68,6 +61,8 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
       }
     } catch (error) {
       console.error(`Error uploading ${type} photo:`, error);
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -79,14 +74,16 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
         ) : (
           <div className="cover-placeholder" />
         )}
-        <label className="upload-button cover-upload">
+        <label className="edit-cover-btn-modern" disabled={isUploading}>
+          <FiEdit2 style={{ marginRight: '6px' }} />
+          {isUploading ? 'Uploading...' : 'Edit Cover'}
           <input
             type="file"
             accept="image/*"
             onChange={(e) => handlePhotoUpload(e, 'cover')}
             style={{ display: 'none' }}
+            disabled={isUploading}
           />
-          Change Cover Photo
         </label>
       </div>
       <div className="profile-info">
@@ -96,26 +93,26 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
           ) : (
             <div className="profile-placeholder" />
           )}
-          <label className="upload-button profile-upload">
+          <label className="upload-button profile-upload" disabled={isUploading}>
             <input
               type="file"
               accept="image/*"
               onChange={(e) => handlePhotoUpload(e, 'profile')}
               style={{ display: 'none' }}
+              disabled={isUploading}
             />
-            Change Photo
+            {isUploading ? 'Uploading...' : 'Change Photo'}
           </label>
         </div>
         <div className="profile-details">
           {isEditing ? (
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="edit-form">
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleInputChange}
                 placeholder="Name"
-                required
               />
               <input
                 type="text"
@@ -131,13 +128,6 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
                 onChange={handleInputChange}
                 placeholder="Location"
               />
-              <textarea
-                name="about"
-                value={formData.about}
-                onChange={handleInputChange}
-                placeholder="About"
-                rows="3"
-              />
               <input
                 type="text"
                 name="bio"
@@ -145,19 +135,19 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
                 onChange={handleInputChange}
                 placeholder="Bio"
               />
-              <div className="button-group">
+              <div className="form-actions">
                 <button type="submit" className="save-button">Save</button>
                 <button type="button" className="cancel-button" onClick={() => setIsEditing(false)}>Cancel</button>
               </div>
             </form>
           ) : (
             <>
-              <h1>{profile?.name || 'Your Name'}</h1>
-              <p className="headline">{profile?.headline || 'Your Headline'}</p>
-              <p className="location">{profile?.location || 'Your Location'}</p>
-              <p className="about">{profile?.profile?.about || 'Your About'}</p>
-              <p className="bio">{profile?.bio || 'Your Bio'}</p>
-              <button className="edit-button" onClick={() => setIsEditing(true)}>Edit Profile</button>
+              <h1>{profile?.name}</h1>
+              <p className="headline">{profile?.headline}</p>
+              <p className="location">{profile?.location}</p>
+              <button className="edit-button" onClick={() => setIsEditing(true)}>
+                Edit Profile
+              </button>
             </>
           )}
         </div>

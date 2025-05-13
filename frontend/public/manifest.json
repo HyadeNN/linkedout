@@ -1,6 +1,6 @@
 {
   "short_name": "LinkedOut",
-  "name": "LinkedOut Professional Network",
+  "name": "LinkedOut - Professional Network",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,18 +8,18 @@
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/3536/3536505.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "logo512.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/3536/3536505.png",
       "type": "image/png",
       "sizes": "512x512"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#0a66c2",
+  "theme_color": "#000000",
   "background_color": "#ffffff"
 }
