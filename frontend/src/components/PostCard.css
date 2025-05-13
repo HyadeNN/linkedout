@@ -1,0 +1,148 @@
+.post-card {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.post-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.post-author {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+}
+
+.author-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  margin-right: 12px;
+  object-fit: cover;
+}
+
+.author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.author-name {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+}
+
+.post-date {
+  font-size: 12px;
+  color: #666;
+}
+
+.post-content {
+  padding: 16px;
+}
+
+.post-text {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
+.post-image-container {
+  margin: 0 -16px;
+}
+
+.post-image {
+  width: 100%;
+  max-height: 400px;
+  object-fit: cover;
+}
+
+.post-hashtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.post-hashtag {
+  background: none;
+  border: none;
+  color: #0066cc;
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.post-hashtag:hover {
+  background-color: #f0f7ff;
+}
+
+.post-stats {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 16px;
+  border-top: 1px solid #f0f0f0;
+  color: #666;
+  font-size: 13px;
+}
+
+.likes-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.like-icon {
+  font-size: 14px;
+}
+
+.post-actions {
+  display: flex;
+  border-top: 1px solid #f0f0f0;
+}
+
+.action-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+  background-color: #f5f5f5;
+}
+
+.action-btn.liked {
+  color: #0066cc;
+}
+
+.action-icon {
+  font-size: 16px;
+}
+
+.comments-count {
+  cursor: pointer;
+}
+
+.comments-count:hover {
+  text-decoration: underline;
+} 
