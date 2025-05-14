@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { postService } from '../../services';
-import { collection, query, where, orderBy, limit, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import NewPost from './NewPost';
 import PostList from './PostList';
 import Header from '../common/Header';
 import './Feed.css';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { FaHashtag, FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
 
 const Feed = () => {
   const { user } = useAuth();
@@ -18,6 +19,7 @@ const Feed = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredPosts, setFilteredPosts] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
+  const [sortDirection, setSortDirection] = useState('desc');
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -26,6 +28,7 @@ const Feed = () => {
     const params = new URLSearchParams(location.search);
     const hashtagParam = params.get('hashtag');
     const searchParam = params.get('search');
+    const sortParam = params.get('sort');
     
     if (hashtagParam) {
       setSelectedHashtag(hashtagParam);
@@ -33,7 +36,77 @@ const Feed = () => {
     if (searchParam) {
       setSearchTerm(searchParam);
     }
+    if (sortParam) {
+      setSortDirection(sortParam);
+    }
   }, [location]);
+
+  // Fetch posts with hashtag filter and sorting
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setLoading(true);
+        let postsQuery;
+        
+        if (selectedHashtag) {
+          postsQuery = query(
+            collection(db, 'posts'),
+            where('hashtags', 'array-contains', '#' + selectedHashtag),
+            orderBy('createdAt', sortDirection)
+          );
+        } else {
+          postsQuery = query(
+            collection(db, 'posts'),
+            orderBy('createdAt', sortDirection)
+          );
+        }
+
+        const snapshot = await getDocs(postsQuery);
+        const postsData = await Promise.all(
+          snapshot.docs.map(async (doc) => {
+            const postData = doc.data();
+            const post = {
+              id: doc.id,
+              content: postData.content,
+              image_url: postData.imageUrl,
+              created_at: postData.createdAt?.toDate?.() || new Date(),
+              hashtags: postData.hashtags || [],
+              likes_count: postData.likesCount || 0,
+              comments_count: postData.commentsCount || 0,
+              author_id: postData.userId
+            };
+
+            // Fetch author data
+            if (postData.userId) {
+              const authorDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', postData.userId)));
+              if (!authorDoc.empty) {
+                const authorData = authorDoc.docs[0].data();
+                post.author = {
+                  first_name: authorData.name?.split(' ')[0] || '',
+                  last_name: authorData.name?.split(' ').slice(1).join(' ') || '',
+                  profile: {
+                    headline: authorData.headline || '',
+                    profile_image: authorData.profile?.profile_image || null
+                  }
+                };
+              }
+            }
+
+            return post;
+          })
+        );
+
+        setPosts(postsData);
+        setFilteredPosts(postsData);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, [selectedHashtag, sortDirection]); // sortDirection değiştiğinde yeniden çek
 
   // Arama sonuçlarını güncelle
   useEffect(() => {
@@ -80,14 +153,23 @@ const Feed = () => {
   useEffect(() => {
     const fetchTrendingHashtags = async () => {
       try {
-        const hashtagsRef = collection(db, 'hashtags');
-        const q = query(hashtagsRef, orderBy('count', 'desc'), limit(10));
-        const querySnapshot = await getDocs(q);
-        const hashtags = querySnapshot.docs.map(doc => ({
-          name: doc.data().name,
-          count: doc.data().count
-        }));
-        setTrendingHashtags(hashtags);
+        const postsRef = collection(db, 'posts');
+        const postsSnapshot = await getDocs(postsRef);
+        
+        const hashtagCounts = {};
+        postsSnapshot.docs.forEach(doc => {
+          const hashtags = doc.data().hashtags || [];
+          hashtags.forEach(tag => {
+            hashtagCounts[tag] = (hashtagCounts[tag] || 0) + 1;
+          });
+        });
+
+        const sortedHashtags = Object.entries(hashtagCounts)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 10); // Top 10 hashtags
+
+        setTrendingHashtags(sortedHashtags);
       } catch (error) {
         console.error('Error fetching trending hashtags:', error);
       }
@@ -95,70 +177,6 @@ const Feed = () => {
 
     fetchTrendingHashtags();
   }, []);
-
-  // Fetch posts with hashtag filter
-  useEffect(() => {
-    const fetchPosts = async () => {
-      try {
-        setLoading(true);
-        let postsQuery;
-        
-        if (selectedHashtag) {
-          postsQuery = query(
-            collection(db, 'posts'),
-            where('hashtags', 'array-contains', selectedHashtag),
-            orderBy('createdAt', 'desc')
-          );
-        } else {
-          postsQuery = query(
-            collection(db, 'posts'),
-            orderBy('createdAt', 'desc')
-          );
-        }
-
-        const snapshot = await getDocs(postsQuery);
-        const postsData = await Promise.all(
-          snapshot.docs.map(async (doc) => {
-            const postData = doc.data();
-            const post = {
-              id: doc.id,
-              content: postData.content,
-              image_url: postData.imageUrl,
-              created_at: postData.createdAt?.toDate?.() || new Date(),
-              hashtags: postData.hashtags || [],
-              likes_count: postData.likesCount || 0,
-              comments_count: postData.commentsCount || 0,
-              author_id: postData.userId
-            };
-
-            // Fetch author data
-            const authorDoc = await getDoc(doc(db, 'users', post.author_id));
-            if (authorDoc.exists()) {
-              const authorData = authorDoc.data();
-              post.author = {
-                first_name: authorData.name?.split(' ')[0] || '',
-                last_name: authorData.name?.split(' ').slice(1).join(' ') || '',
-                profile: {
-                  headline: authorData.headline || '',
-                  profile_image: authorData.profile?.profile_image || null
-                }
-              };
-            }
-
-            return post;
-          })
-        );
-
-        setPosts(postsData);
-      } catch (error) {
-        console.error('Error fetching posts:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchPosts();
-  }, [selectedHashtag]);
 
   const handlePostCreated = (newPost) => {
     setPosts(prevPosts => [newPost, ...prevPosts]);
@@ -176,8 +194,31 @@ const Feed = () => {
     setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
   };
 
+  const toggleSortDirection = () => {
+    const newDirection = sortDirection === 'desc' ? 'asc' : 'desc';
+    setSortDirection(newDirection);
+    
+    // Update URL
+    const params = new URLSearchParams(location.search);
+    params.set('sort', newDirection);
+    navigate(`?${params.toString()}`);
+  };
+
   const handleHashtagClick = (hashtag) => {
-    setSelectedHashtag(hashtag === selectedHashtag ? null : hashtag);
+    const tagName = hashtag.replace(/^#/, '');
+    setSelectedHashtag(tagName);
+    
+    // Update URL
+    const params = new URLSearchParams(location.search);
+    params.set('hashtag', tagName);
+    navigate(`?${params.toString()}`);
+  };
+
+  const clearHashtagFilter = () => {
+    setSelectedHashtag(null);
+    const params = new URLSearchParams(location.search);
+    params.delete('hashtag');
+    navigate(`?${params.toString()}`);
   };
 
   return (
@@ -185,6 +226,26 @@ const Feed = () => {
       <Header />
       <div className="feed-container">
         <div className="feed-main">
+          <div className="feed-header">
+            <div className="feed-header-top">
+              {selectedHashtag && (
+                <div className="active-filter">
+                  <div className="filter-tag">
+                    <FaHashtag />
+                    <span>{selectedHashtag}</span>
+                  </div>
+                  <button onClick={clearHashtagFilter} className="clear-filter">
+                    Filtreyi Kaldır
+                  </button>
+                </div>
+              )}
+              <button onClick={toggleSortDirection} className="sort-button">
+                {sortDirection === 'desc' ? <FaSortAmountDown /> : <FaSortAmountUp />}
+                <span>{sortDirection === 'desc' ? 'En Yeni' : 'En Eski'}</span>
+              </button>
+            </div>
+          </div>
+
           <NewPost onPostCreated={handlePostCreated} />
           
           <div className="search-wrapper">
@@ -219,15 +280,8 @@ const Feed = () => {
             )}
           </div>
 
-          {selectedHashtag && (
-            <div className="active-filter">
-              <span>Filtering by: {selectedHashtag}</span>
-              <button onClick={() => setSelectedHashtag(null)}>Clear Filter</button>
-            </div>
-          )}
-
           {loading ? (
-            <div className="loading-indicator">Loading posts...</div>
+            <div className="loading-indicator">Gönderiler yükleniyor...</div>
           ) : (
             <PostList
               posts={filteredPosts}
@@ -240,16 +294,17 @@ const Feed = () => {
 
         <div className="feed-sidebar">
           <div className="trending-hashtags">
-            <h3>Trending Hashtags</h3>
+            <h3>Popüler Hashtagler</h3>
             <div className="hashtag-list">
               {trendingHashtags.map((hashtag, index) => (
                 <button
                   key={index}
-                  className={`hashtag-button ${selectedHashtag === hashtag.name ? 'active' : ''}`}
+                  className={`hashtag-button ${selectedHashtag === hashtag.name.replace('#', '') ? 'active' : ''}`}
                   onClick={() => handleHashtagClick(hashtag.name)}
                 >
-                  {hashtag.name}
-                  <span className="hashtag-count">{hashtag.count}</span>
+                  <FaHashtag className="hashtag-icon" />
+                  <span>{hashtag.name.replace('#', '')}</span>
+                  <span className="hashtag-count">{hashtag.count} gönderi</span>
                 </button>
               ))}
             </div>

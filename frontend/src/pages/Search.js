@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
-import { FaSearch, FaHashtag, FaUser, FaNewspaper, FaArrowLeft } from 'react-icons/fa';
+import { FaSearch, FaHashtag, FaUser, FaNewspaper, FaArrowLeft, FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
 import './Search.css';
 
 const Search = () => {
@@ -10,9 +10,43 @@ const Search = () => {
   const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('posts');
+  const [sortDirection, setSortDirection] = useState('desc');
+  const [allHashtags, setAllHashtags] = useState([]);
+  const [loadingHashtags, setLoadingHashtags] = useState(true);
   const navigate = useNavigate();
 
   const searchQuery = searchParams.get('q');
+
+  // Fetch all hashtags for sidebar
+  useEffect(() => {
+    const fetchAllHashtags = async () => {
+      try {
+        setLoadingHashtags(true);
+        const postsRef = collection(db, 'posts');
+        const postsSnapshot = await getDocs(postsRef);
+        
+        const hashtagCounts = {};
+        postsSnapshot.docs.forEach(doc => {
+          const hashtags = doc.data().hashtags || [];
+          hashtags.forEach(tag => {
+            hashtagCounts[tag] = (hashtagCounts[tag] || 0) + 1;
+          });
+        });
+
+        const sortedHashtags = Object.entries(hashtagCounts)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count);
+
+        setAllHashtags(sortedHashtags);
+      } catch (error) {
+        console.error('Error fetching hashtags:', error);
+      } finally {
+        setLoadingHashtags(false);
+      }
+    };
+
+    fetchAllHashtags();
+  }, []);
 
   useEffect(() => {
     const fetchResults = async () => {
@@ -24,13 +58,13 @@ const Search = () => {
 
           switch (activeTab) {
             case 'posts':
-              // Search in posts collection
+              // Search in posts collection with dynamic sort order
               const postsQuery = query(
                 collection(db, 'posts'),
                 where('content', '>=', searchTerm),
                 where('content', '<=', searchTerm + '\uf8ff'),
                 orderBy('content'),
-                orderBy('createdAt', 'desc'),
+                orderBy('createdAt', sortDirection),
                 limit(20)
               );
               const postsSnapshot = await getDocs(postsQuery);
@@ -117,7 +151,11 @@ const Search = () => {
     };
 
     fetchResults();
-  }, [searchQuery, activeTab]);
+  }, [searchQuery, activeTab, sortDirection]);
+
+  const toggleSortDirection = () => {
+    setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc');
+  };
 
   const handleHashtagClick = (hashtag) => {
     navigate(`/?hashtag=${encodeURIComponent(hashtag.replace('#', ''))}`);
@@ -202,9 +240,15 @@ const Search = () => {
       <div className="search-container">
         <div className="search-main">
           <div className="search-header">
-            <button onClick={handleBackToFeed} className="back-button">
-              <FaArrowLeft /> Ana Feed'e Dön
-            </button>
+            <div className="search-header-top">
+              <button onClick={handleBackToFeed} className="back-button">
+                <FaArrowLeft /> Ana Feed'e Dön
+              </button>
+              <button onClick={toggleSortDirection} className="sort-button">
+                {sortDirection === 'desc' ? <FaSortAmountDown /> : <FaSortAmountUp />}
+                <span>{sortDirection === 'desc' ? 'En Yeni' : 'En Eski'}</span>
+              </button>
+            </div>
             <div className="search-tabs">
               <button
                 className={`tab-button ${activeTab === 'posts' ? 'active' : ''}`}
@@ -266,9 +310,25 @@ const Search = () => {
             </div>
           </div>
           <div className="sidebar-section">
-            <h3>Gruplar</h3>
-            <div className="groups-list">
-              <p className="no-groups">Grup bulunamadı</p>
+            <h3>Popüler Hashtagler</h3>
+            <div className="hashtags-list">
+              {loadingHashtags ? (
+                <div className="sidebar-loading">Yükleniyor...</div>
+              ) : allHashtags.length === 0 ? (
+                <p className="no-hashtags">Hashtag bulunamadı</p>
+              ) : (
+                allHashtags.map((hashtag) => (
+                  <button
+                    key={hashtag.name}
+                    className="sidebar-hashtag-button"
+                    onClick={() => handleHashtagClick(hashtag.name)}
+                  >
+                    <FaHashtag className="hashtag-icon" />
+                    <span>{hashtag.name.replace('#', '')}</span>
+                    <span className="hashtag-count">{hashtag.count}</span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
         </div>
