@@ -1,123 +1,248 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { jobService } from '../services';
+import { 
+  collection, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  startAfter, 
+  doc, 
+  getDoc, 
+  serverTimestamp, 
+  setDoc, 
+  deleteDoc 
+} from 'firebase/firestore';
+import { db, auth } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { MdLocationOn, MdWork, MdBookmark, MdBookmarkBorder } from 'react-icons/md';
+import './Jobs.css';
 
 const Jobs = () => {
   const { user } = useAuth();
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
+  const [lastVisible, setLastVisible] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [totalJobs, setTotalJobs] = useState(0);
+  const [saveLoading, setSaveLoading] = useState(false);
   const [filters, setFilters] = useState({
     query: '',
     location: '',
-    job_type: '',
-    is_remote: null,
-    min_salary: '',
-    max_salary: ''
+    jobType: '',
+    isRemote: false,
+    minSalary: '',
+    maxSalary: ''
   });
   const [isEmployer, setIsEmployer] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
 
   // Check if user is employer
   useEffect(() => {
     if (user) {
-      setIsEmployer(user.role === 'employer' || user.role === 'admin');
+      // Get user's role from Firestore
+      const fetchUserRole = async () => {
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setIsEmployer(userData.role === 'employer' || userData.role === 'admin');
+          }
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+        }
+      };
+      
+      fetchUserRole();
     }
   }, [user]);
 
-  // Fetch jobs
+  // Fetch jobs when component mounts or filters change
   useEffect(() => {
-    fetchJobs();
-  }, [page, filters]);
+    fetchJobs(true);
+  }, [filters]);
 
-  const fetchJobs = async () => {
+  // Fetch jobs from Firestore
+  const fetchJobs = async (resetPagination = false) => {
     try {
       setLoading(true);
-
-      // Prepare filters
-      const filterParams = { ...filters };
-
-      // Convert empty strings to null
-      Object.keys(filterParams).forEach(key => {
-        if (filterParams[key] === '') {
-          filterParams[key] = null;
-        }
-      });
-
-      // Search jobs with filters
-      const response = await jobService.searchJobs(filterParams, page);
-
-      if (page === 1) {
-        setJobs(response.items);
-      } else {
-        setJobs(prevJobs => [...prevJobs, ...response.items]);
+      
+      // Start with base query
+      let jobsRef = collection(db, 'jobs');
+      let queryConstraints = [
+        orderBy('createdAt', 'desc'),
+      ];
+      
+      // Add filters
+      if (filters.jobType) {
+        queryConstraints.push(where('jobType', '==', filters.jobType));
       }
-
-      setTotalJobs(response.total);
-      setHasMore(response.has_next);
+      
+      if (filters.isRemote) {
+        queryConstraints.push(where('isRemote', '==', true));
+      }
+      
+      // Apply pagination
+      if (lastVisible && !resetPagination) {
+        queryConstraints.push(startAfter(lastVisible));
+      }
+      
+      queryConstraints.push(limit(10));
+      
+      // Execute query
+      const jobsQuery = query(jobsRef, ...queryConstraints);
+      const snapshot = await getDocs(jobsQuery);
+      
+      // Update last visible for pagination
+      if (!snapshot.empty) {
+        setLastVisible(snapshot.docs[snapshot.docs.length - 1]);
+      } else {
+        setHasMore(false);
+      }
+      
+      // Map documents to job objects
+      let fetchedJobs = await Promise.all(
+        snapshot.docs.map(async (docSnapshot) => {
+          const jobData = docSnapshot.data();
+          
+          // Check if job is saved by current user
+          let isSaved = false;
+          if (user) {
+            const savedJobRef = doc(db, 'users', user.uid, 'savedJobs', docSnapshot.id);
+            const savedJobDoc = await getDoc(savedJobRef);
+            isSaved = savedJobDoc.exists();
+          }
+          
+          // Get employer name and profile image
+          let employerName = '';
+          let employerImage = '';
+          if (jobData.employerId) {
+            const employerDoc = await getDoc(doc(db, 'users', jobData.employerId));
+            if (employerDoc.exists()) {
+              const employerData = employerDoc.data();
+              employerName = employerData.displayName || '';
+              employerImage = employerData.photoURL || '';
+            }
+          }
+          
+          return {
+            id: docSnapshot.id,
+            ...jobData,
+            isSaved,
+            employer: {
+              id: jobData.employerId,
+              name: jobData.companyName || employerName,
+              image: employerImage
+            },
+            createdAt: jobData.createdAt?.toDate(),
+          };
+        })
+      );
+      
+      // Apply client-side filtering
+      if (filters.query) {
+        const query = filters.query.toLowerCase();
+        fetchedJobs = fetchedJobs.filter(job => 
+          job.title?.toLowerCase().includes(query) || 
+          job.company?.toLowerCase().includes(query) || 
+          job.description?.toLowerCase().includes(query)
+        );
+      }
+      
+      if (filters.location) {
+        const location = filters.location.toLowerCase();
+        fetchedJobs = fetchedJobs.filter(job => 
+          job.location?.toLowerCase().includes(location)
+        );
+      }
+      
+      if (filters.minSalary) {
+        fetchedJobs = fetchedJobs.filter(job => 
+          job.salary?.min >= parseFloat(filters.minSalary)
+        );
+      }
+      
+      if (filters.maxSalary) {
+        fetchedJobs = fetchedJobs.filter(job => 
+          job.salary?.max <= parseFloat(filters.maxSalary)
+        );
+      }
+      
+      setJobs(prevJobs => resetPagination ? fetchedJobs : [...prevJobs, ...fetchedJobs]);
+      setTotalJobs(prevTotal => resetPagination ? fetchedJobs.length : prevTotal + fetchedJobs.length);
+      
+      if (fetchedJobs.length < 10) {
+        setHasMore(false);
+      } else {
+        setHasMore(true);
+      }
     } catch (error) {
-      console.error('Failed to fetch jobs:', error);
+      console.error('Error fetching jobs:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle load more
+  // Handle loading more jobs
   const handleLoadMore = () => {
     if (hasMore && !loading) {
-      setPage(prevPage => prevPage + 1);
+      fetchJobs(false);
     }
   };
 
-  // Handle filter change
+  // Handle filter changes
   const handleFilterChange = (e) => {
     const { name, value, type, checked } = e.target;
-
-    setFilters(prevFilters => ({
-      ...prevFilters,
+    
+    setFilters(prev => ({
+      ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-
-    // Reset page to 1 when filters change
-    setPage(1);
   };
 
-  // Handle search submit
+  // Handle search submission
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    setPage(1);
-    fetchJobs();
+    fetchJobs(true);
   };
 
-  // Handle save job
+  // Handle saving/unsaving a job
   const handleSaveJob = async (jobId) => {
+    if (!user) {
+      alert('Please log in to save jobs');
+      return;
+    }
+    
     try {
-      setActionLoading(true);
-
-      const job = jobs.find(j => j.id === jobId);
-
-      if (job.is_saved) {
+      setSaveLoading(true);
+      
+      const job = jobs.find(job => job.id === jobId);
+      const savedJobRef = doc(db, 'users', user.uid, 'savedJobs', jobId);
+      
+      if (job.isSaved) {
         // Unsave job
-        await jobService.removeSavedJob(jobId);
+        await deleteDoc(savedJobRef);
       } else {
         // Save job
-        await jobService.saveJob(jobId);
+        await setDoc(savedJobRef, {
+          jobId,
+          savedAt: serverTimestamp(),
+          title: job.title,
+          company: job.company,
+          location: job.location
+        });
       }
-
-      // Update local state
-      setJobs(prevJobs =>
-        prevJobs.map(j =>
-          j.id === jobId ? { ...j, is_saved: !j.is_saved } : j
+      
+      // Update UI
+      setJobs(prevJobs => 
+        prevJobs.map(job => 
+          job.id === jobId ? { ...job, isSaved: !job.isSaved } : job
         )
       );
     } catch (error) {
-      console.error('Failed to save/unsave job:', error);
-      alert('Failed to save/unsave job. Please try again.');
+      console.error('Error saving/unsaving job:', error);
     } finally {
-      setActionLoading(false);
+      setSaveLoading(false);
     }
   };
 
@@ -125,24 +250,24 @@ const Jobs = () => {
     <div className="jobs-page">
       <div className="jobs-header">
         <h1 className="page-title">Find Jobs</h1>
-
+        
         <div className="jobs-actions">
           {isEmployer && (
             <Link to="/jobs/create" className="post-job-btn">
               Post a Job
             </Link>
           )}
-
+          
           <Link to="/jobs/my-jobs" className="my-jobs-btn">
             {isEmployer ? 'My Job Postings' : 'My Applications'}
           </Link>
-
+          
           <Link to="/jobs/saved" className="saved-jobs-btn">
             Saved Jobs
           </Link>
         </div>
       </div>
-
+      
       <div className="jobs-container">
         <div className="jobs-filters">
           <form onSubmit={handleSearchSubmit} className="search-form">
@@ -157,7 +282,7 @@ const Jobs = () => {
                   className="search-input"
                 />
               </div>
-
+              
               <div className="form-group">
                 <input
                   type="text"
@@ -168,19 +293,21 @@ const Jobs = () => {
                   className="location-input"
                 />
               </div>
-
+              
               <button type="submit" className="search-btn">
                 Search
               </button>
             </div>
-
+            
             <div className="advanced-filters">
+              <h3 className="filter-title">Filters</h3>
+              
               <div className="filter-group">
-                <label htmlFor="job_type">Job Type</label>
+                <label htmlFor="jobType">Job Type</label>
                 <select
-                  id="job_type"
-                  name="job_type"
-                  value={filters.job_type}
+                  id="jobType"
+                  name="jobType"
+                  value={filters.jobType}
                   onChange={handleFilterChange}
                 >
                   <option value="">All Types</option>
@@ -191,44 +318,37 @@ const Jobs = () => {
                   <option value="internship">Internship</option>
                 </select>
               </div>
-
+              
               <div className="filter-group checkbox-group">
                 <input
                   type="checkbox"
-                  id="is_remote"
-                  name="is_remote"
-                  checked={filters.is_remote === true}
-                  onChange={(e) => handleFilterChange({
-                    target: {
-                      name: 'is_remote',
-                      value: e.target.checked,
-                      type: 'checkbox',
-                      checked: e.target.checked
-                    }
-                  })}
+                  id="isRemote"
+                  name="isRemote"
+                  checked={filters.isRemote}
+                  onChange={handleFilterChange}
                 />
-                <label htmlFor="is_remote">Remote Jobs</label>
+                <label htmlFor="isRemote">Remote Jobs Only</label>
               </div>
-
+              
               <div className="filter-group">
-                <label htmlFor="min_salary">Minimum Salary</label>
+                <label htmlFor="minSalary">Minimum Salary</label>
                 <input
                   type="number"
-                  id="min_salary"
-                  name="min_salary"
-                  value={filters.min_salary}
+                  id="minSalary"
+                  name="minSalary"
+                  value={filters.minSalary}
                   onChange={handleFilterChange}
                   placeholder="Min"
                 />
               </div>
-
+              
               <div className="filter-group">
-                <label htmlFor="max_salary">Maximum Salary</label>
+                <label htmlFor="maxSalary">Maximum Salary</label>
                 <input
                   type="number"
-                  id="max_salary"
-                  name="max_salary"
-                  value={filters.max_salary}
+                  id="maxSalary"
+                  name="maxSalary"
+                  value={filters.maxSalary}
                   onChange={handleFilterChange}
                   placeholder="Max"
                 />
@@ -236,21 +356,21 @@ const Jobs = () => {
             </div>
           </form>
         </div>
-
+        
         <div className="jobs-content">
           {loading && jobs.length === 0 ? (
-            <div className="loading-indicator">Searching for jobs...</div>
+            <div className="loading-indicator">Loading jobs...</div>
           ) : jobs.length === 0 ? (
             <div className="empty-state">
               <h3>No jobs found</h3>
-              <p>Try adjusting your search criteria or check back later for new opportunities.</p>
+              <p>Try adjusting your search filters or check back later for new opportunities.</p>
             </div>
           ) : (
             <>
               <div className="jobs-count">
-                Showing {jobs.length} of {totalJobs} jobs
+                Showing {jobs.length} jobs
               </div>
-
+              
               <div className="jobs-list">
                 {jobs.map(job => (
                   <div key={job.id} className="job-card">
@@ -258,53 +378,72 @@ const Jobs = () => {
                       <h2 className="job-title">
                         <Link to={`/jobs/${job.id}`}>{job.title}</Link>
                       </h2>
-                      <p className="job-company">{job.company_name}</p>
+                      
+                      <p className="job-company">{job.company}</p>
+                      
                       <p className="job-location">
-                        {job.location} {job.is_remote && '(Remote)'}
+                        <MdLocationOn />
+                        {job.location}
+                        {job.isRemote && ' (Remote)'}
                       </p>
-
+                      
                       <div className="job-details">
-                        <span className="job-type">{job.job_type}</span>
-
-                        {(job.salary_min || job.salary_max) && (
+                        {job.jobType && (
+                          <span className="job-type">
+                            <MdWork /> {job.jobType}
+                          </span>
+                        )}
+                        
+                        {job.salary && (
                           <span className="job-salary">
-                            {job.salary_min && job.salary_max
-                              ? `${job.salary_min} - ${job.salary_max} ${job.currency}`
-                              : job.salary_min
-                              ? `From ${job.salary_min} ${job.currency}`
-                              : `Up to ${job.salary_max} ${job.currency}`}
+                            {job.salary.min && job.salary.max
+                              ? `${job.salary.min} - ${job.salary.max} ${job.salary.currency || 'USD'}`
+                              : job.salary.min
+                              ? `From ${job.salary.min} ${job.salary.currency || 'USD'}`
+                              : job.salary.max
+                              ? `Up to ${job.salary.max} ${job.salary.currency || 'USD'}`
+                              : ''}
                           </span>
                         )}
                       </div>
-
+                      
                       <p className="job-date">
-                        Posted on: {new Date(job.created_at).toLocaleDateString()}
+                        Posted: {job.createdAt ? job.createdAt.toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
-
+                    
                     <div className="job-actions">
                       <Link to={`/jobs/${job.id}`} className="view-job-btn">
                         View Job
                       </Link>
+                      
                       <button
-                        className={`save-job-btn ${job.is_saved ? 'saved' : ''}`}
+                        className={`save-job-btn ${job.isSaved ? 'saved' : ''}`}
                         onClick={() => handleSaveJob(job.id)}
-                        disabled={actionLoading}
+                        disabled={saveLoading}
                       >
-                        {job.is_saved ? 'Saved' : 'Save'}
+                        {job.isSaved ? (
+                          <>
+                            <MdBookmark /> Saved
+                          </>
+                        ) : (
+                          <>
+                            <MdBookmarkBorder /> Save
+                          </>
+                        )}
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
-
+              
               {hasMore && (
                 <button
                   className="load-more-btn"
                   onClick={handleLoadMore}
                   disabled={loading}
                 >
-                  {loading ? 'Loading...' : 'Load More'}
+                  {loading ? 'Loading...' : 'Load More Jobs'}
                 </button>
               )}
             </>
@@ -315,4 +454,4 @@ const Jobs = () => {
   );
 };
 
-export default Jobs;
+export default Jobs; 

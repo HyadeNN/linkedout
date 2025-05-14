@@ -141,8 +141,7 @@
 
 .profile-actions {
   display: flex;
-  gap: 16px;
-  margin-top: 18px;
+  gap: 12px;
 }
 
 .action-button {
@@ -164,6 +163,32 @@
   background: #FFFFFF;
   color: #0075B1;
   border: 1px solid #0075B1;
+}
+
+.settings-button {
+  padding: 6px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  border-radius: 16px;
+  background: #fff;
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-button:hover {
+  background: rgba(0, 0, 0, 0.08);
+  border-color: rgba(0, 0, 0, 0.75);
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.settings-button svg {
+  font-size: 16px;
 }
 
 /* Modern profile section styles */

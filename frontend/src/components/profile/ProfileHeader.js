@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { FiEdit2 } from 'react-icons/fi';
+import { FiEdit2, FiSettings } from 'react-icons/fi';
 import { profileService } from '../../services/profile';
+import { Link } from 'react-router-dom';
 import './ProfileHeader.css';
 
 const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFieldChange, onSaveProfile }) => {
@@ -145,9 +146,15 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
               <h1>{profile?.name}</h1>
               <p className="headline">{profile?.headline}</p>
               <p className="location">{profile?.location}</p>
-              <button className="edit-button" onClick={() => setIsEditing(true)}>
-                Edit Profile
-              </button>
+              <div className="profile-actions">
+                <button className="edit-button" onClick={() => setIsEditing(true)}>
+                  Edit Profile
+                </button>
+                <Link to="/profile/settings" className="settings-button">
+                  <FiSettings />
+                  Hesap Ayarları
+                </Link>
+              </div>
             </>
           )}
         </div>

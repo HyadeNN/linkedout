@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
-import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy, getDocs, limit, getDoc, doc } from 'firebase/firestore';
 import { FaSearch, FaHashtag, FaUser, FaNewspaper, FaArrowLeft, FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
 import './Search.css';
 
@@ -59,83 +59,122 @@ const Search = () => {
           switch (activeTab) {
             case 'posts':
               // Search in posts collection with dynamic sort order
+              const postsCollectionRef = collection(db, 'posts');
               const postsQuery = query(
-                collection(db, 'posts'),
-                where('content', '>=', searchTerm),
-                where('content', '<=', searchTerm + '\uf8ff'),
-                orderBy('content'),
+                postsCollectionRef,
                 orderBy('createdAt', sortDirection),
-                limit(20)
+                limit(100)
               );
               const postsSnapshot = await getDocs(postsQuery);
               
-              // Get user data for each post
-              results = await Promise.all(postsSnapshot.docs.map(async (doc) => {
-                const postData = doc.data();
-                const userDoc = await getDocs(doc(db, 'users', postData.userId));
-                const userData = userDoc.data();
-                
-                return {
-                  id: doc.id,
-                  ...postData,
-                  author: {
-                    first_name: userData?.name?.split(' ')[0] || '',
-                    last_name: userData?.name?.split(' ').slice(1).join(' ') || '',
-                    profile: {
-                      headline: userData?.headline || '',
-                      profile_image: userData?.profile?.profile_image || null
-                    }
+              const filteredPostDocs = postsSnapshot.docs.filter(docSnapshot => {
+                const postData = docSnapshot.data();
+                // Check if post has content and userId
+                return postData.content && 
+                       postData.userId && 
+                       postData.content?.toLowerCase().includes(searchTerm);
+              });
+
+              // Get user data for each filtered post
+              results = await Promise.all(filteredPostDocs.slice(0, 20).map(async (docSnapshot) => {
+                try {
+                  const postData = docSnapshot.data();
+                  if (!postData.userId) {
+                    return null; // Skip posts without userId
                   }
-                };
+
+                  const userDocRef = doc(db, 'users', postData.userId);
+                  const userDocSnapshot = await getDoc(userDocRef);
+                  
+                  if (!userDocSnapshot.exists()) {
+                    return null; // Skip if user doesn't exist
+                  }
+
+                  const userData = userDocSnapshot.data();
+                  if (!userData) {
+                    return null; // Skip if user data is empty
+                  }
+                  
+                  return {
+                    id: docSnapshot.id,
+                    ...postData,
+                    author: {
+                      id: postData.userId,
+                      first_name: userData?.name?.split(' ')[0] || '',
+                      last_name: userData?.name?.split(' ').slice(1).join(' ') || '',
+                      profile: {
+                        headline: userData?.headline || '',
+                        profile_image: userData?.profile?.profile_image || null
+                      }
+                    }
+                  };
+                } catch (error) {
+                  console.error('Error fetching user data for post:', error);
+                  return null;
+                }
               }));
+
+              // Filter out null results and ensure we have valid posts
+              results = results.filter(result => result !== null);
               break;
 
             case 'users':
               // Search in users collection
+              const usersCollectionRef = collection(db, 'users');
               const usersQuery = query(
-                collection(db, 'users'),
-                where('name', '>=', searchTerm),
-                where('name', '<=', searchTerm + '\uf8ff'),
+                usersCollectionRef,
                 orderBy('name'),
-                limit(20)
+                limit(100)
               );
               const usersSnapshot = await getDocs(usersQuery);
-              results = usersSnapshot.docs.map(doc => ({
-                id: doc.id,
-                first_name: doc.data().name?.split(' ')[0] || '',
-                last_name: doc.data().name?.split(' ').slice(1).join(' ') || '',
-                profile: {
-                  headline: doc.data().headline || '',
-                  profile_image: doc.data().profile?.profile_image || null
-                }
-              }));
+
+              const filteredUserDocs = usersSnapshot.docs.filter(docSnapshot => {
+                const userData = docSnapshot.data();
+                // Check if user has a name
+                return userData && userData.name && userData.name?.toLowerCase().includes(searchTerm);
+              });
+
+              results = filteredUserDocs.slice(0, 20).map(docSnapshot => {
+                const userData = docSnapshot.data();
+                return {
+                  id: docSnapshot.id,
+                  first_name: userData?.name?.split(' ')[0] || '',
+                  last_name: userData?.name?.split(' ').slice(1).join(' ') || '',
+                  profile: {
+                    headline: userData?.headline || '',
+                    profile_image: userData?.profile?.profile_image || null
+                  }
+                };
+              });
               break;
 
             case 'hashtags':
-              // Search in posts collection for hashtags
-              const hashtagsQuery = query(
+              // Fetch posts to search their hashtags client-side for "contains" functionality
+              const allPostsQueryForHashtags = query(
                 collection(db, 'posts'),
-                where('hashtags', 'array-contains', '#' + searchTerm),
-                orderBy('createdAt', 'desc'),
-                limit(20)
+                orderBy('createdAt', 'desc'), // Fetch recent posts
+                limit(200) // Fetch a larger set of posts to find relevant hashtags. Adjust as needed.
               );
-              const hashtagsSnapshot = await getDocs(hashtagsQuery);
+              const allPostsSnapshotForHashtags = await getDocs(allPostsQueryForHashtags);
               
-              // Count posts per hashtag
-              const hashtagCounts = {};
-              hashtagsSnapshot.docs.forEach(doc => {
-                const hashtags = doc.data().hashtags || [];
-                hashtags.forEach(tag => {
-                  if (tag.toLowerCase().includes(searchTerm)) {
-                    hashtagCounts[tag] = (hashtagCounts[tag] || 0) + 1;
+              const matchedHashtagCounts = {};
+              // searchTerm is already lowercased at the beginning of fetchResults
+
+              allPostsSnapshotForHashtags.docs.forEach(doc => {
+                const postData = doc.data();
+                const postHashtags = postData.hashtags || [];
+                postHashtags.forEach(tag => {
+                  // Check if the hashtag (without '#') contains the search term
+                  if (tag.toLowerCase().replace('#', '').includes(searchTerm)) { 
+                    matchedHashtagCounts[tag] = (matchedHashtagCounts[tag] || 0) + 1;
                   }
                 });
               });
               
-              results = Object.entries(hashtagCounts).map(([name, count]) => ({
-                name,
-                count
-              }));
+              results = Object.entries(matchedHashtagCounts)
+                .map(([name, count]) => ({ name, count }))
+                .sort((a, b) => b.count - a.count) // Sort by count
+                .slice(0, 20); // Limit the number of displayed hashtag results
               break;
 
             default:

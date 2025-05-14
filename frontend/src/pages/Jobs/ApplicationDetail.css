@@ -1,0 +1,488 @@
+.application-detail-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: #f5f7fa;
+  min-height: 100vh;
+}
+
+.application-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  color: #0077b5;
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  background-color: rgba(0, 119, 181, 0.1);
+}
+
+.back-button:hover {
+  color: #004471;
+  background-color: rgba(0, 119, 181, 0.15);
+}
+
+.back-button svg {
+  margin-right: 0.5rem;
+  font-size: 1.2rem;
+}
+
+.detail-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-gap: 2rem;
+}
+
+.card {
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 1.8rem;
+  margin-bottom: 1.8rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.card-title {
+  color: #333;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.2rem;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.8rem;
+}
+
+.job-info {
+  margin-bottom: 1.5rem;
+}
+
+.job-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  color: #0077b5;
+}
+
+.company-name {
+  font-size: 1.15rem;
+  color: #444;
+  margin-bottom: 0.6rem;
+  font-weight: 500;
+}
+
+.job-location {
+  font-size: 0.95rem;
+  color: #666;
+  margin-bottom: 0.8rem;
+  display: flex;
+  align-items: center;
+}
+
+.job-meta {
+  display: flex;
+  flex-wrap: wrap;
+  margin: 1rem 0;
+}
+
+.job-type, .remote-tag {
+  font-size: 0.85rem;
+  padding: 0.4rem 0.8rem;
+  margin-right: 0.7rem;
+  margin-bottom: 0.7rem;
+  border-radius: 20px;
+  background-color: #f0f2f5;
+  color: #555;
+  font-weight: 500;
+}
+
+.remote-tag {
+  background-color: #e3f2fd;
+  color: #0077b5;
+}
+
+.view-job-button {
+  display: inline-block;
+  padding: 0.7rem 1.2rem;
+  border-radius: 6px;
+  background-color: #0077b5;
+  color: white;
+  text-decoration: none;
+  font-size: 0.95rem;
+  text-align: center;
+  transition: all 0.3s;
+  font-weight: 500;
+  margin-top: 0.5rem;
+  box-shadow: 0 2px 5px rgba(0, 119, 181, 0.2);
+}
+
+.view-job-button:hover {
+  background-color: #004471;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 119, 181, 0.3);
+}
+
+/* Application Status */
+.status-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  margin-bottom: 1.2rem;
+  align-self: flex-start;
+}
+
+.status-pending {
+  background-color: #e3f2fd;
+  color: #0277bd;
+}
+
+.status-reviewing {
+  background-color: #fff8e1;
+  color: #ff8f00;
+}
+
+.status-interviewing {
+  background-color: #e8f5e9;
+  color: #388e3c;
+}
+
+.status-accepted {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-rejected {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.status-dates {
+  font-size: 0.95rem;
+  color: #666;
+  background-color: #f9f9f9;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.date-item {
+  margin-bottom: 0.7rem;
+  display: flex;
+  align-items: center;
+}
+
+.date-label {
+  font-weight: 500;
+  margin-right: 0.5rem;
+  color: #444;
+}
+
+/* Application Content */
+.content-section {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.content-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.cover-letter-content, 
+.experience-content {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #444;
+  white-space: pre-line;
+  background-color: #f9f9f9;
+  padding: 1.2rem;
+  border-radius: 8px;
+  border-left: 3px solid #0077b5;
+}
+
+.phone-number {
+  font-size: 1rem;
+  color: #444;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+/* Employer Actions */
+.status-update-form {
+  margin-top: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 0.7rem;
+  color: #333;
+}
+
+.status-select {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  background-color: #fff;
+  transition: border-color 0.3s;
+}
+
+.status-select:focus {
+  border-color: #0077b5;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 119, 181, 0.25);
+}
+
+.notes-input {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 1rem;
+  resize: vertical;
+  min-height: 120px;
+  font-family: inherit;
+  transition: border-color 0.3s;
+}
+
+.notes-input:focus {
+  border-color: #0077b5;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 119, 181, 0.25);
+}
+
+.update-status-button {
+  padding: 0.8rem 1.5rem;
+  background-color: #0077b5;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-weight: 500;
+  box-shadow: 0 2px 5px rgba(0, 119, 181, 0.2);
+}
+
+.update-status-button:hover {
+  background-color: #004471;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 119, 181, 0.3);
+}
+
+.update-status-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Applicant Info */
+.applicant-profile {
+  display: flex;
+  align-items: flex-start;
+}
+
+.applicant-photo-container {
+  position: relative;
+  margin-right: 1.5rem;
+  flex-shrink: 0;
+}
+
+.applicant-photo {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s;
+  background-color: #f0f2f5;
+}
+
+.applicant-photo:hover {
+  transform: scale(1.05);
+}
+
+.applicant-details {
+  flex: 1;
+}
+
+.applicant-name {
+  font-size: 1.3rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.applicant-email, 
+.applicant-headline {
+  font-size: 0.95rem;
+  color: #555;
+  margin-bottom: 0.7rem;
+  line-height: 1.4;
+}
+
+.view-profile-button {
+  display: inline-block;
+  padding: 0.6rem 1rem;
+  margin-top: 0.8rem;
+  border-radius: 6px;
+  background-color: #f0f2f5;
+  color: #333;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: all 0.3s;
+  font-weight: 500;
+}
+
+.view-profile-button:hover {
+  background-color: #e4e6eb;
+  transform: translateY(-2px);
+}
+
+/* Employer Notes */
+.notes-content {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #444;
+  white-space: pre-line;
+  background-color: #f9f9f9;
+  padding: 1.2rem;
+  border-radius: 8px;
+  border-left: 3px solid #0077b5;
+}
+
+/* Loading and Error States */
+.loading-indicator, 
+.error-message {
+  text-align: center;
+  padding: 4rem 2rem;
+  font-size: 1.1rem;
+  color: #666;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-top: 2rem;
+}
+
+.loading-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-indicator:before {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 40px;
+  margin-bottom: 1rem;
+  border-radius: 50%;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #0077b5;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-message {
+  color: #d32f2f;
+  border-left: 4px solid #d32f2f;
+}
+
+/* Responsive Design */
+@media (max-width: 900px) {
+  .detail-content {
+    grid-template-columns: 1fr;
+  }
+  
+  .application-detail-page {
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 700px) {
+  .applicant-profile {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  
+  .applicant-photo-container {
+    margin-right: 0;
+    margin-bottom: 1.5rem;
+  }
+  
+  .view-profile-button {
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .application-detail-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  
+  .back-button {
+    margin-bottom: 0.5rem;
+  }
+  
+  .card {
+    padding: 1.2rem;
+  }
+} 

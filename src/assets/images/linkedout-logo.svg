@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="120" height="30" viewBox="0 0 120 30" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    .logo-text { font-family: Arial, sans-serif; font-weight: bold; }
+  </style>
+  <text x="10" y="22" fill="#0077B5" class="logo-text" font-size="24">Linked</text>
+  <text x="75" y="22" fill="#000000" class="logo-text" font-size="24">Out</text>
+</svg> 

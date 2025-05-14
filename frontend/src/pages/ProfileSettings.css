@@ -1,0 +1,320 @@
+/* ProfileSettings.css */
+.profile-settings-container {
+  max-width: 800px;
+  margin: 20px auto;
+  padding: 20px;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+}
+
+.profile-settings-title {
+  font-size: 1.8rem;
+  color: #0073b1;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eaeaea;
+}
+
+.settings-section {
+  margin-bottom: 40px;
+}
+
+.settings-section-title {
+  font-size: 1.4rem;
+  color: #333;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+}
+
+.settings-section-title i {
+  margin-right: 10px;
+  color: #0073b1;
+}
+
+/* Linked Accounts */
+.linked-accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.linked-account, .add-account {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  border: 1px solid #eaeaea;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.account-type {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  color: #333;
+}
+
+.account-type i {
+  font-size: 1.2rem;
+  width: 24px;
+  text-align: center;
+}
+
+.account-detail {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.account-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.unlink-button, .link-button {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.unlink-button {
+  background-color: #f0f0f0;
+  color: #e53935;
+}
+
+.unlink-button:hover {
+  background-color: #ffe6e6;
+}
+
+.link-button {
+  background-color: #f0f0f0;
+  color: #0073b1;
+}
+
+.link-button:hover {
+  background-color: #e6f2f8;
+}
+
+.google-button {
+  background-color: #ffffff;
+  color: #4285f4;
+  border: 1px solid #dadce0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.google-button:hover {
+  background-color: #f8f9fa;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Forms */
+.settings-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.form-group label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #333;
+}
+
+.form-group input {
+  padding: 12px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+  border-color: #0073b1;
+  outline: none;
+}
+
+.input-help {
+  font-size: 0.8rem;
+  color: #666;
+  margin-top: 5px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.update-button, .cancel-button {
+  padding: 12px 20px;
+  border-radius: 4px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border: none;
+  font-size: 0.95rem;
+}
+
+.update-button {
+  background-color: #0073b1;
+  color: white;
+}
+
+.update-button:hover {
+  background-color: #005582;
+}
+
+.update-button:disabled {
+  background-color: #83b8d6;
+  cursor: not-allowed;
+}
+
+.cancel-button {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.cancel-button:hover {
+  background-color: #e0e0e0;
+}
+
+.error-message, .success-message {
+  padding: 12px 15px;
+  border-radius: 4px;
+  margin: 10px 0;
+}
+
+.error-message {
+  background-color: #ffe6e6;
+  color: #e53935;
+  border-left: 4px solid #e53935;
+}
+
+.success-message {
+  background-color: #e6f7e6;
+  color: #43a047;
+  border-left: 4px solid #43a047;
+}
+
+/* Verification Complete */
+.verification-complete {
+  background-color: #e6f7e6;
+  padding: 15px;
+  border-radius: 4px;
+  color: #43a047;
+  border-left: 4px solid #43a047;
+}
+
+/* reCAPTCHA Container */
+.recaptcha-container {
+  margin: 15px 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  min-height: 78px;
+  overflow: visible;
+  padding: 5px 0;
+  border: 1px dashed #ddd;
+  border-radius: 4px;
+  background-color: #f9f9f9;
+}
+
+.recaptcha-container iframe,
+.recaptcha-container div {
+  max-width: 100%;
+}
+
+.recaptcha-disclosure {
+  font-size: 0.8rem;
+  color: #666;
+  margin: 8px 0;
+  text-align: center;
+  font-style: italic;
+}
+
+.recaptcha-group {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 400px) {
+  .recaptcha-container {
+    transform: scale(0.85);
+    transform-origin: center;
+    margin: 0 auto;
+    width: 90%;
+  }
+}
+
+/* Security Tips Section */
+.security-tips {
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  border-left: 4px solid #0073b1;
+}
+
+.security-tips ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.security-tips li {
+  margin-bottom: 8px;
+  color: #444;
+  line-height: 1.6;
+}
+
+/* Loading Container */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .profile-settings-container {
+    padding: 15px;
+    margin: 10px;
+  }
+  
+  .linked-account, .add-account {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+  }
+  
+  .account-actions {
+    width: 100%;
+  }
+  
+  .unlink-button, .link-button {
+    width: 100%;
+    justify-content: center;
+  }
+} 

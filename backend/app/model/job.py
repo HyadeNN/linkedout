@@ -104,3 +104,45 @@ class SavedJob:
             created_at=data.get("created_at"),
             saved_job_id=saved_job_id
         )
+
+class JobApplication:
+    """JobApplication model for Firestore."""
+    def __init__(
+        self,
+        job_id: str,
+        applicant_id: str,
+        cover_letter: Optional[str] = None,
+        status: str = "pending",
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+        application_id: Optional[str] = None
+    ):
+        self.application_id = application_id
+        self.job_id = job_id
+        self.applicant_id = applicant_id
+        self.cover_letter = cover_letter
+        self.status = status  # pending, accepted, rejected, interviewing
+        self.created_at = created_at or datetime.utcnow()
+        self.updated_at = updated_at or datetime.utcnow()
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "job_id": self.job_id,
+            "applicant_id": self.applicant_id,
+            "cover_letter": self.cover_letter,
+            "status": self.status,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any], application_id: Optional[str] = None) -> 'JobApplication':
+        return cls(
+            job_id=data["job_id"],
+            applicant_id=data["applicant_id"],
+            cover_letter=data.get("cover_letter"),
+            status=data.get("status", "pending"),
+            created_at=data.get("created_at"),
+            updated_at=data.get("updated_at"),
+            application_id=application_id
+        )

@@ -5,10 +5,9 @@
 }
 
 .feed-container {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  gap: 24px;
-  margin-top: 80px;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
 .feed-main {
@@ -22,18 +21,15 @@
 }
 
 .feed-header {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 16px;
-  overflow: hidden;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
 }
 
-.feed-header-top {
+.feed-controls {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
+  gap: 10px;
 }
 
 .active-filter {
@@ -78,13 +74,12 @@
 .sort-button {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 5px;
   padding: 8px 16px;
   border: none;
   border-radius: 20px;
   background: rgba(10, 102, 194, 0.08);
   color: #0a66c2;
-  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -153,10 +148,16 @@
   opacity: 0.8;
 }
 
-.loading-indicator {
+.loading {
   text-align: center;
-  padding: 40px;
+  padding: 20px;
   color: #666;
+}
+
+.post-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
 .search-wrapper {

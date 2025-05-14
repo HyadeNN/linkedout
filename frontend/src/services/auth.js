@@ -6,12 +6,13 @@ import api, { setAuthToken } from './api';
 import axios from 'axios';
 import { db } from '../firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { USER_ROLES } from '../contexts/AuthContext';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
 
 // Register user
 export const register = async (userData) => {
-  const { email, password, first_name, last_name } = userData;
+  const { email, password, first_name, last_name, role = USER_ROLES.USER, company_name = '' } = userData;
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     
@@ -20,10 +21,11 @@ export const register = async (userData) => {
       displayName: `${first_name} ${last_name}`
     });
 
-    // Create user document in Firestore
-    await setDoc(doc(db, 'users', userCredential.user.uid), {
+    // Prepare user data with basic fields
+    const userDataForFirestore = {
       name: `${first_name} ${last_name}`,
       email: userCredential.user.email,
+      role,
       createdAt: new Date().toISOString(),
       profile: {
         profile_image: '',
@@ -43,15 +45,30 @@ export const register = async (userData) => {
       skill: [],
       activity: [],
       interest: []
-    });
+    };
+    
+    // Add company_name field for employers
+    if (role === USER_ROLES.EMPLOYER && company_name) {
+      userDataForFirestore.company_name = company_name;
+    }
+
+    // Create user document in Firestore
+    await setDoc(doc(db, 'users', userCredential.user.uid), userDataForFirestore);
 
     // Save user to local storage
-    const userData = {
+    const userDataForLocalStorage = {
       email: userCredential.user.email,
       displayName: userCredential.user.displayName,
-      uid: userCredential.user.uid
+      uid: userCredential.user.uid,
+      role
     };
-    localStorage.setItem('user', JSON.stringify(userData));
+    
+    // Include company name in local storage for employers
+    if (role === USER_ROLES.EMPLOYER && company_name) {
+      userDataForLocalStorage.company_name = company_name;
+    }
+    
+    localStorage.setItem('user', JSON.stringify(userDataForLocalStorage));
 
     return { user: userCredential.user };
   } catch (error) {
@@ -65,13 +82,8 @@ export const login = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     
-    // Save user to local storage
-    const userData = {
-      email: userCredential.user.email,
-      displayName: userCredential.user.displayName,
-      uid: userCredential.user.uid
-    };
-    localStorage.setItem('user', JSON.stringify(userData));
+    // We'll get the role from Firestore in the AuthContext
+    // through fetchAndMergeProfile
     
     return { user: userCredential.user };
   } catch (error) {

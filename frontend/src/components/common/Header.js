@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { FaRss, FaUserFriends, FaBriefcase, FaCommentDots, FaBell, FaSearch } from 'react-icons/fa';
+import { FaRss, FaUserFriends, FaBriefcase, FaSearch } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Logo from './Logo';
 import NavigationMenu from './NavigationMenu';
@@ -15,8 +15,6 @@ const navItems = [
   { name: 'Feed', icon: <FaRss />, path: '/' },
   { name: 'Network', icon: <FaUserFriends />, path: '/network' },
   { name: 'Jobs', icon: <FaBriefcase />, path: '/jobs' },
-  { name: 'Chat', icon: <FaCommentDots />, path: '/chat' },
-  { name: 'Notices', icon: <FaBell />, path: '/notices' },
 ];
 
 const Header = () => {

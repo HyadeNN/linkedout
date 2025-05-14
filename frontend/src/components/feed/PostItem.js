@@ -4,21 +4,24 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../../contexts/AuthContext';
 import { postService } from '../../services';
 import CommentSection from './CommentSection';
+import './PostItem.css';
 
-const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
+const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick, isOwnProfile = false, showUser = true }) => {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState('');
   const [showOptions, setShowOptions] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
-  const [commentsCount, setCommentsCount] = useState(post.comments_count || 0);
+  const [likesCount, setLikesCount] = useState(post?.likes_count || 0);
+  const [commentsCount, setCommentsCount] = useState(post?.comments_count || 0);
   const [showComments, setShowComments] = useState(false);
   const [loading, setLoading] = useState(false);
   const optionsRef = useRef(null);
 
   // Check if the post is liked by the current user
   useEffect(() => {
+    if (!post || !post.id) return;
+    
     const checkIfLiked = async () => {
       try {
         const liked = await postService.isPostLiked(post.id);
@@ -29,7 +32,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
     };
 
     checkIfLiked();
-  }, [post.id]);
+  }, [post?.id]);
 
   // Close options menu when clicking outside
   useEffect(() => {
@@ -45,6 +48,11 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
     };
   }, []);
 
+  // Safety check for null post - do this in render, not before hooks
+  if (!post) {
+    return null;
+  }
+
   // Toggle options menu
   const toggleOptions = () => {
     setShowOptions(prevState => !prevState);
@@ -52,7 +60,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
 
   // Enter edit mode
   const handleEdit = () => {
-    setEditContent(post.content);
+    setEditContent(post.content || '');
     setIsEditing(true);
     setShowOptions(false);
   };
@@ -88,7 +96,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
       try {
         setLoading(true);
         await postService.deletePost(post.id);
-        onDeletePost(post.id);
+        onDeletePost && onDeletePost(post.id);
       } catch (error) {
         console.error('Failed to delete post:', error);
         alert('Failed to delete post. Please try again.');
@@ -101,12 +109,14 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
 
   // Toggle like
   const handleLikeToggle = async () => {
+    if (!post.id) return;
+    
     try {
       setLoading(true);
       if (isLiked) {
         await postService.unlikePost(post.id);
         setIsLiked(false);
-        setLikesCount(prevCount => prevCount - 1);
+        setLikesCount(prevCount => Math.max(0, prevCount - 1));
       } else {
         await postService.likePost(post.id);
         setIsLiked(true);
@@ -135,7 +145,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
   };
 
   const renderHashtags = () => {
-    if (!post.hashtags || post.hashtags.length === 0) return null;
+    if (!post.hashtags || !Array.isArray(post.hashtags) || post.hashtags.length === 0) return null;
 
     return (
       <div className="post-hashtags">
@@ -143,66 +153,108 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
           <button
             key={index}
             className="hashtag-button"
-            onClick={() => onHashtagClick(hashtag)}
+            onClick={() => onHashtagClick && onHashtagClick(hashtag)}
           >
-            {hashtag.replace(/^#/, '')}
+            {hashtag.startsWith('#') ? hashtag.substring(1) : hashtag}
           </button>
         ))}
       </div>
     );
   };
 
+  // Determine if we should show options (edit/delete)
+  const canModifyPost = isOwnProfile || (post.author_id === user?.id);
+  
+  // Handle missing author information
+  const authorName = post.author ? 
+    `${post.author.first_name || ''} ${post.author.last_name || ''}`.trim() : 
+    'Unknown User';
+  
+  const authorHeadline = post.author?.profile?.headline || '';
+  const authorAvatar = post.author?.profile?.profile_image || '/images/default-avatar.jpg';
+  const postDate = post.created_at ? formatDistanceToNow(new Date(post.created_at), { addSuffix: true }) : 'Recently';
+
   return (
     <div className="post-item">
-      <div className="post-header">
-        <Link to={`/users/${post.author_id}`} className="post-author">
-          <img
-            src={post.author?.profile?.profile_image || '/default-avatar.jpg'}
-            alt={`${post.author?.first_name} ${post.author?.last_name}`}
-            className="author-avatar"
-          />
-          <div className="author-info">
-            <h4 className="author-name">
-              {post.author?.first_name} {post.author?.last_name}
-            </h4>
-            <p className="author-headline">{post.author?.profile?.headline || ''}</p>
-            <span className="post-time">
-              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
-            </span>
-          </div>
-        </Link>
+      {showUser && (
+        <div className="post-header">
+          <Link to={`/users/${post.author_id}`} className="post-author">
+            <img
+              src={authorAvatar}
+              alt={authorName}
+              className="author-avatar"
+              onError={(e) => {e.target.src = '/images/default-avatar.jpg'}}
+            />
+            <div className="author-info">
+              <h4 className="author-name">{authorName}</h4>
+              {authorHeadline && <p className="author-headline">{authorHeadline}</p>}
+              <span className="post-time">{postDate}</span>
+            </div>
+          </Link>
 
-        {post.author_id === user?.id && (
-          <div className="post-options" ref={optionsRef}>
-            <button
-              className="options-btn"
-              onClick={toggleOptions}
-              disabled={loading}
-            >
-              <span className="options-icon">⋯</span>
-            </button>
+          {canModifyPost && (
+            <div className="post-options" ref={optionsRef}>
+              <button
+                className="options-btn"
+                onClick={toggleOptions}
+                disabled={loading}
+              >
+                <span className="options-icon">⋯</span>
+              </button>
 
-            {showOptions && (
-              <div className="options-menu">
-                <button
-                  className="option-item"
-                  onClick={handleEdit}
-                  disabled={loading}
-                >
-                  Edit
-                </button>
-                <button
-                  className="option-item delete"
-                  onClick={handleDelete}
-                  disabled={loading}
-                >
-                  Delete
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+              {showOptions && (
+                <div className="options-menu">
+                  <button
+                    className="option-item"
+                    onClick={handleEdit}
+                    disabled={loading}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="option-item delete"
+                    onClick={handleDelete}
+                    disabled={loading}
+                  >
+                    Delete
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {!showUser && canModifyPost && (
+        <div className="post-options-minimal" ref={optionsRef}>
+          <button
+            className="options-btn"
+            onClick={toggleOptions}
+            disabled={loading}
+          >
+            <span className="options-icon">⋯</span>
+          </button>
+
+          {showOptions && (
+            <div className="options-menu">
+              <button
+                className="option-item"
+                onClick={handleEdit}
+                disabled={loading}
+              >
+                Edit
+              </button>
+              <button
+                className="option-item delete"
+                onClick={handleDelete}
+                disabled={loading}
+              >
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="post-content">
         {isEditing ? (
@@ -233,7 +285,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
           </div>
         ) : (
           <>
-            <p className="post-text">{post.content}</p>
+            <p className="post-text">{post.content || 'No content'}</p>
             {renderHashtags()}
             {post.image_url && (
               <div className="post-image-container">
@@ -241,6 +293,17 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
                   src={post.image_url}
                   alt="Post"
                   className="post-image"
+                  onError={(e) => {e.target.src = '/images/image-placeholder.jpg'}}
+                />
+              </div>
+            )}
+            {post.imageUrl && !post.image_url && (
+              <div className="post-image-container">
+                <img
+                  src={post.imageUrl}
+                  alt="Post"
+                  className="post-image"
+                  onError={(e) => {e.target.src = '/images/image-placeholder.jpg'}}
                 />
               </div>
             )}
@@ -294,7 +357,7 @@ const PostItem = ({ post, onUpdatePost, onDeletePost, onHashtagClick }) => {
         </button>
       </div>
 
-      {showComments && (
+      {showComments && post.id && (
         <CommentSection
           postId={post.id}
           onCommentAdded={handleCommentAdded}

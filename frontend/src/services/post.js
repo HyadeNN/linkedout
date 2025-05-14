@@ -77,11 +77,11 @@ export const getPost = async (postId) => {
 };
 
 // Get feed posts with user data
-export const getFeedPosts = async () => {
+export const getFeedPosts = async (sortDirection = 'desc') => {
   try {
     const q = query(
       collection(db, 'posts'),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', sortDirection)
     );
     const snapshot = await getDocs(q);
     
@@ -361,6 +361,7 @@ export const getComments = async (postId) => {
 export const getPosts = async (filters = {}) => {
   try {
     let postsQuery = collection(db, 'posts');
+    const sortDirection = filters.sortDirection || 'desc';
     
     if (filters.hashtag) {
       // Ensure hashtag starts with #
@@ -370,10 +371,10 @@ export const getPosts = async (filters = {}) => {
       postsQuery = query(
         postsQuery,
         where('hashtags', 'array-contains', searchHashtag),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', sortDirection)
       );
     } else {
-      postsQuery = query(postsQuery, orderBy('createdAt', 'desc'));
+      postsQuery = query(postsQuery, orderBy('createdAt', sortDirection));
     }
 
     const snapshot = await getDocs(postsQuery);

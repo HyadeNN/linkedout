@@ -29,7 +29,7 @@ def create_job(
 
 @router.put("/{job_id}", response_model=JobInDB)
 def update_job(
-        job_id: int,
+        job_id: str,
         job_data: JobUpdate,
         current_user: User = Depends(get_current_active_user),
         db: Session = Depends(get_db)
@@ -40,7 +40,7 @@ def update_job(
 
 @router.delete("/{job_id}", status_code=status.HTTP_200_OK)
 def delete_job(
-        job_id: int,
+        job_id: str,
         current_user: User = Depends(get_current_active_user),
         db: Session = Depends(get_db)
 ):
@@ -51,7 +51,7 @@ def delete_job(
 
 @router.get("/{job_id}", response_model=JobWithUser)
 def get_job(
-        job_id: int,
+        job_id: str,
         current_user: User = Depends(get_current_active_user),
         db: Session = Depends(get_db)
 ):
@@ -85,8 +85,8 @@ def get_jobs(
 
     # Add is_saved and is_applied flags
     for job in jobs:
-        job.is_saved = job_service.is_job_saved(db, current_user.id, job.id)
-        job.is_applied = job_service.is_job_applied(db, current_user.id, job.id)
+        job.is_saved = job_service.is_job_saved(db, current_user.id, job.job_id)
+        job.is_applied = job_service.is_job_applied(db, current_user.id, job.job_id)
 
     return paginate_response(jobs, page, limit, total)
 
@@ -105,7 +105,7 @@ def get_my_job_postings(
 
     # Add applications count
     for job in jobs:
-        job.applications_count = job_service.count_job_applications(db, job.id, current_user.id)
+        job.applications_count = job_service.count_job_applications(db, job.job_id, current_user.id)
 
     return paginate_response(jobs, page, limit, total)
 
@@ -134,8 +134,8 @@ def search_jobs(
 
     # Add is_saved and is_applied flags
     for job in jobs:
-        job.is_saved = job_service.is_job_saved(db, current_user.id, job.id)
-        job.is_applied = job_service.is_job_applied(db, current_user.id, job.id)
+        job.is_saved = job_service.is_job_saved(db, current_user.id, job.job_id)
+        job.is_applied = job_service.is_job_applied(db, current_user.id, job.job_id)
 
     return paginate_response(jobs, page, limit, total)
 
@@ -153,7 +153,7 @@ def apply_for_job(
 
 @router.put("/applications/{application_id}", response_model=JobApplicationInDB)
 def update_application_status(
-        application_id: int,
+        application_id: str,
         application_data: JobApplicationUpdate,
         current_user: User = Depends(get_current_active_user),
         db: Session = Depends(get_db)
@@ -164,7 +164,7 @@ def update_application_status(
 
 @router.get("/{job_id}/applications", response_model=Dict)
 def get_job_applications(
-        job_id: int,
+        job_id: str,
         page: int = Query(1, ge=1),
         limit: int = Query(20, ge=1, le=100),
         current_user: User = Depends(get_current_active_user),
@@ -206,7 +206,7 @@ def save_job(
 
 @router.delete("/save/{job_id}", status_code=status.HTTP_200_OK)
 def remove_saved_job(
-        job_id: int,
+        job_id: str,
         current_user: User = Depends(get_current_active_user),
         db: Session = Depends(get_db)
 ):
@@ -232,7 +232,7 @@ def get_saved_jobs(
 
 @router.get("/{job_id}/is-saved")
 def is_job_saved(
-        job_id: int,
+        job_id: str,
         current_user: User = Depends(get_current_active_user),
         db: Session = Depends(get_db)
 ):
@@ -243,7 +243,7 @@ def is_job_saved(
 
 @router.get("/{job_id}/is-applied")
 def is_job_applied(
-        job_id: int,
+        job_id: str,
         current_user: User = Depends(get_current_active_user),
         db: Session = Depends(get_db)
 ):

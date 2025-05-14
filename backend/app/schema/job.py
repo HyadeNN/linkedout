@@ -33,7 +33,7 @@ class JobUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class JobApplicationBase(BaseModel):
-    job_id: int
+    job_id: str
     cover_letter: Optional[str] = None
 
 class JobApplicationCreate(JobApplicationBase):
@@ -43,14 +43,14 @@ class JobApplicationUpdate(BaseModel):
     status: str
 
 class SavedJobBase(BaseModel):
-    job_id: int
+    job_id: str
 
 class SavedJobCreate(SavedJobBase):
     pass
 
 class JobApplicationInDB(JobApplicationBase):
-    id: int
-    applicant_id: int
+    application_id: str
+    applicant_id: str
     status: str
     created_at: datetime
     updated_at: Optional[datetime] = None
@@ -62,16 +62,16 @@ class JobApplicationWithUser(JobApplicationInDB):
     applicant: Optional[UserResponse] = None
 
 class SavedJobInDB(SavedJobBase):
-    id: int
-    user_id: int
+    saved_job_id: str
+    user_id: str
     created_at: datetime
 
     class Config:
         orm_mode = True
 
 class JobInDB(JobBase):
-    id: int
-    poster_id: int
+    job_id: str
+    poster_id: str
     is_active: bool
     created_at: datetime
     updated_at: Optional[datetime] = None

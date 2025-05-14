@@ -38,7 +38,7 @@ const Profile = () => {
   const [projectSubmitting, setProjectSubmitting] = useState(false);
   const [posts, setPosts] = useState([]);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [postForm, setPostForm] = useState({ content: '', image: null });
+  const [postForm, setPostForm] = useState({ content: '', image: null, hashtags: [] });
   const [postError, setPostError] = useState('');
   const [postSubmitting, setPostSubmitting] = useState(false);
   const [articles, setArticles] = useState([]);
@@ -450,7 +450,8 @@ const Profile = () => {
     setEditingPost(post);
     setPostForm({
       content: post.content,
-      image: null
+      image: null,
+      hashtags: post.hashtags || []
     });
     setEditingSection('post');
   };
@@ -466,6 +467,11 @@ const Profile = () => {
         updatedAt: new Date()
       };
       
+      // Include hashtags in update data
+      if (postForm.hashtags && postForm.hashtags.length > 0) {
+        updateData.hashtags = postForm.hashtags;
+      }
+      
       if (postForm.image) {
         updateData.imageUrl = await uploadPostImage(postForm.image);
       }
@@ -478,7 +484,7 @@ const Profile = () => {
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setPosts(data);
       
-      setPostForm({ content: '', image: null });
+      setPostForm({ content: '', image: null, hashtags: [] });
       setEditingPost(null);
       setEditingSection(null);
     } catch (err) {
@@ -1003,20 +1009,7 @@ const Profile = () => {
                         {post.hashtags.map((hashtag, index) => (
                           <span
                             key={index}
-                            style={{
-                              background: '#e8f3ff',
-                              color: '#0a66c2',
-                              borderRadius: 16,
-                              padding: '3px 14px',
-                              fontSize: 14,
-                              fontWeight: 500,
-                              whiteSpace: 'nowrap',
-                              maxWidth: '100%',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              display: 'inline-block',
-                              lineHeight: 1.6
-                            }}
+                            className="post-hashtag"
                           >
                             {hashtag}
                           </span>
@@ -1037,6 +1030,76 @@ const Profile = () => {
                           rows="3"
                           required
                         />
+                        
+                        <div className="hashtags-edit-container">
+                          <label>Hashtag'ler:</label>
+                          <div className="hashtags-edit-list">
+                            {postForm.hashtags && postForm.hashtags.map((hashtag, index) => (
+                              <div key={index} className="hashtag-edit-item">
+                                <span>{hashtag}</span>
+                                <button 
+                                  type="button" 
+                                  className="remove-hashtag-btn"
+                                  onClick={() => setPostForm(prev => ({
+                                    ...prev,
+                                    hashtags: prev.hashtags.filter((_, i) => i !== index)
+                                  }))}
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="hashtag-add-container">
+                            <input
+                              type="text"
+                              placeholder="Yeni hashtag ekle (# işareti ile başlayarak)"
+                              value={postForm.newHashtag || ''}
+                              onChange={e => setPostForm(prev => ({ ...prev, newHashtag: e.target.value }))}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  if (postForm.newHashtag && postForm.newHashtag.trim()) {
+                                    const tag = postForm.newHashtag.trim().startsWith('#') 
+                                      ? postForm.newHashtag.trim() 
+                                      : `#${postForm.newHashtag.trim()}`;
+                                    
+                                    if (!postForm.hashtags.includes(tag)) {
+                                      setPostForm(prev => ({
+                                        ...prev,
+                                        hashtags: [...prev.hashtags, tag],
+                                        newHashtag: ''
+                                      }));
+                                    }
+                                  }
+                                }
+                              }}
+                              className="hashtag-input"
+                            />
+                            <button 
+                              type="button" 
+                              className="add-hashtag-btn"
+                              onClick={() => {
+                                if (postForm.newHashtag && postForm.newHashtag.trim()) {
+                                  const tag = postForm.newHashtag.trim().startsWith('#') 
+                                    ? postForm.newHashtag.trim() 
+                                    : `#${postForm.newHashtag.trim()}`;
+                                  
+                                  if (!postForm.hashtags.includes(tag)) {
+                                    setPostForm(prev => ({
+                                      ...prev,
+                                      hashtags: [...prev.hashtags, tag],
+                                      newHashtag: ''
+                                    }));
+                                  }
+                                }
+                              }}
+                            >
+                              Ekle
+                            </button>
+                          </div>
+                        </div>
+                        
                         <input
                           type="file"
                           name="image"

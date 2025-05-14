@@ -1,0 +1,160 @@
+/* Create Job Page Styles */
+.create-job-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.create-job-container {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+}
+
+.page-title {
+  font-size: 28px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 24px 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.form-section {
+  margin-bottom: 32px;
+}
+
+.section-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+  margin: 0 0 16px 0;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.form-control {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-control:focus {
+  border-color: #0a66c2;
+  outline: none;
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.checkbox-group input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.cancel-button,
+.submit-button {
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-button {
+  background-color: transparent;
+  color: #666;
+  border: 1px solid #e0e0e0;
+}
+
+.cancel-button:hover {
+  background-color: #f5f5f5;
+}
+
+.submit-button {
+  background-color: #0a66c2;
+  color: white;
+  border: none;
+}
+
+.submit-button:hover {
+  background-color: #004182;
+}
+
+.submit-button:disabled,
+.cancel-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.form-error {
+  color: #e53e3e;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.loading-indicator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 16px;
+  color: #666;
+}
+
+.success-message {
+  padding: 16px;
+  background-color: #ecfdf3;
+  border: 1px solid #48bb78;
+  border-radius: 4px;
+  color: #2f855a;
+  font-size: 16px;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.required {
+  color: #e53e3e;
+  margin-left: 2px;
+} 

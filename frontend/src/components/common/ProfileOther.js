@@ -26,7 +26,7 @@ const ProfileOther = () => {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/login');
+      // No need to navigate manually as the logout function now handles redirection
     } catch (error) {
       console.error('Failed to log out:', error);
     }

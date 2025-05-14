@@ -601,4 +601,106 @@
 
 .delete-button:hover {
   color: #b91c1c;
+}
+
+/* Hashtag edit styling */
+.hashtags-edit-container {
+  margin: 10px 0;
+  padding: 10px;
+  background-color: #f7f9fc;
+  border-radius: 8px;
+  border: 1px solid #e0e5ee;
+}
+
+.hashtags-edit-container label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #333;
+}
+
+.hashtags-edit-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.hashtag-edit-item {
+  display: flex;
+  align-items: center;
+  background-color: #e8f3ff;
+  color: #0a66c2;
+  padding: 6px 10px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.remove-hashtag-btn {
+  background: none;
+  border: none;
+  color: #0a66c2;
+  margin-left: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.remove-hashtag-btn:hover {
+  color: #e53935;
+}
+
+.hashtag-add-container {
+  display: flex;
+  gap: 8px;
+}
+
+.hashtag-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #dde1e6;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.hashtag-input:focus {
+  outline: none;
+  border-color: #0a66c2;
+  box-shadow: 0 0 0 2px rgba(10, 102, 194, 0.1);
+}
+
+.add-hashtag-btn {
+  background-color: #0a66c2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-hashtag-btn:hover {
+  background-color: #08478f;
+}
+
+/* Post hashtags display */
+.post-hashtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.post-hashtag {
+  background-color: #e8f3ff;
+  color: #0a66c2;
+  padding: 4px 10px;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 500;
 } 

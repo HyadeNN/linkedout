@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import '../../styles/auth.css';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('user'); // Default role
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, USER_ROLES } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated()) {
       navigate('/');
     }
   }, [isAuthenticated, navigate]);
@@ -37,7 +39,13 @@ const Login = () => {
     try {
       setLoading(true);
       await login(email, password);
-      navigate('/');
+      
+      // Redirect based on role
+      if (role === USER_ROLES.EMPLOYER) {
+        navigate('/jobs/my-jobs');
+      } else {
+        navigate('/');
+      }
     } catch (error) {
       console.error('Login failed:', error);
       setErrors({ general: error.message || 'Login failed. Please try again.' });
@@ -56,6 +64,44 @@ const Login = () => {
       )}
 
       <form onSubmit={handleSubmit} className="auth-form">
+        <div className="form-group">
+          <label>Account Type</label>
+          <div className="role-selection">
+            <label 
+              className={`role-option ${role === USER_ROLES.USER ? 'selected' : ''}`}
+              onClick={() => setRole(USER_ROLES.USER)}
+            >
+              <input
+                type="radio"
+                name="role"
+                value={USER_ROLES.USER}
+                checked={role === USER_ROLES.USER}
+                onChange={() => setRole(USER_ROLES.USER)}
+                disabled={loading}
+              />
+              <span className="role-icon">👤</span>
+              <span className="role-label">Job Seeker</span>
+              <span className="role-description">Find jobs and connect with employers</span>
+            </label>
+            <label 
+              className={`role-option ${role === USER_ROLES.EMPLOYER ? 'selected' : ''}`}
+              onClick={() => setRole(USER_ROLES.EMPLOYER)}
+            >
+              <input
+                type="radio"
+                name="role"
+                value={USER_ROLES.EMPLOYER}
+                checked={role === USER_ROLES.EMPLOYER}
+                onChange={() => setRole(USER_ROLES.EMPLOYER)}
+                disabled={loading}
+              />
+              <span className="role-icon">🏢</span>
+              <span className="role-label">Employer</span>
+              <span className="role-description">Post jobs and find candidates</span>
+            </label>
+          </div>
+        </div>
+
         <div className="form-group">
           <label htmlFor="email">Email</label>
           <input

@@ -14,36 +14,35 @@ export const getCurrentUserProfile = async () => {
   return { id: userDoc.id, ...userDoc.data() };
 };
 
-// Update profile
+// Get user profile by id
+export const getUserProfile = async (userId) => {
+  const userDoc = await getDoc(doc(db, 'users', userId));
+  if (!userDoc.exists()) throw new Error('User profile not found');
+  return { id: userDoc.id, ...userDoc.data() };
+};
+
+// Update user profile
 export const updateProfile = async (profileData) => {
   const auth = getAuth();
   const user = auth.currentUser;
   if (!user) throw new Error('No user logged in');
 
   const userRef = doc(db, 'users', user.uid);
-  const currentUserData = (await getDoc(userRef)).data();
+  await updateDoc(userRef, profileData);
+  
+  return { id: user.uid, ...profileData };
+};
 
-  const updateData = {
-    ...currentUserData,
-    name: profileData.name || currentUserData?.name,
-    headline: profileData.headline || currentUserData?.headline,
-    location: profileData.location || currentUserData?.location,
-    bio: profileData.bio || currentUserData?.bio,
-    activity: profileData.activity || currentUserData?.activity || [],
-    education: profileData.education || currentUserData?.education || [],
-    experience: profileData.experience || currentUserData?.experience || [],
-    interest: profileData.interest || currentUserData?.interest || [],
-    skill: profileData.skill || currentUserData?.skill || [],
-    profile: {
-      ...(currentUserData?.profile || {}),
-      about: profileData.profile?.about || currentUserData?.profile?.about || '',
-      profile_image: profileData.profile?.profile_image || currentUserData?.profile?.profile_image || '',
-      cover_image: profileData.profile?.cover_image || currentUserData?.profile?.cover_image || ''
-    }
-  };
-
-  await updateDoc(userRef, updateData);
-  return updateData;
+// Update user role
+export const updateUserRole = async (userId, role) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, { role });
+    return true;
+  } catch (error) {
+    console.error('Error updating user role:', error);
+    throw error;
+  }
 };
 
 // Upload profile image
@@ -52,34 +51,16 @@ export const uploadProfileImage = async (file) => {
   const user = auth.currentUser;
   if (!user) throw new Error('No user logged in');
 
-  // Delete old profile image if exists
-  try {
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    const oldImageUrl = userDoc.data()?.profile?.profile_image;
-    if (oldImageUrl) {
-      const oldImageRef = ref(storage, oldImageUrl);
-      await deleteObject(oldImageRef);
-    }
-  } catch (error) {
-    console.log('No old profile image to delete');
-  }
+  const storageRef = ref(storage, `profile_images/${user.uid}/${file.name}`);
+  const snapshot = await uploadBytes(storageRef, file);
+  const downloadURL = await getDownloadURL(snapshot.ref);
 
-  // Upload new image
-  const storageRef = ref(storage, `users/${user.uid}/profile.jpg`);
-  await uploadBytes(storageRef, file);
-  const url = await getDownloadURL(storageRef);
-
-  // Update profile with new image URL
   const userRef = doc(db, 'users', user.uid);
-  const userData = (await getDoc(userRef)).data();
   await updateDoc(userRef, {
-    profile: {
-      ...userData.profile,
-      profile_image: url
-    }
+    'profile.profile_image': downloadURL
   });
 
-  return url;
+  return downloadURL;
 };
 
 // Upload cover image
@@ -88,34 +69,16 @@ export const uploadCoverImage = async (file) => {
   const user = auth.currentUser;
   if (!user) throw new Error('No user logged in');
 
-  // Delete old cover image if exists
-  try {
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    const oldImageUrl = userDoc.data()?.profile?.cover_image;
-    if (oldImageUrl) {
-      const oldImageRef = ref(storage, oldImageUrl);
-      await deleteObject(oldImageRef);
-    }
-  } catch (error) {
-    console.log('No old cover image to delete');
-  }
+  const storageRef = ref(storage, `cover_images/${user.uid}/${file.name}`);
+  const snapshot = await uploadBytes(storageRef, file);
+  const downloadURL = await getDownloadURL(snapshot.ref);
 
-  // Upload new image
-  const storageRef = ref(storage, `users/${user.uid}/cover.jpg`);
-  await uploadBytes(storageRef, file);
-  const url = await getDownloadURL(storageRef);
-
-  // Update profile with new cover image URL
   const userRef = doc(db, 'users', user.uid);
-  const userData = (await getDoc(userRef)).data();
   await updateDoc(userRef, {
-    profile: {
-      ...userData.profile,
-      cover_image: url
-    }
+    'profile.cover_image': downloadURL
   });
 
-  return url;
+  return downloadURL;
 };
 
 // Add activity
@@ -228,14 +191,6 @@ export const addSkill = async (skill) => {
   return newSkill;
 };
 
-// Get user profile by ID
-export const getUserProfile = async (userId) => {
-  const userRef = doc(db, 'users', userId);
-  const userSnap = await getDoc(userRef);
-  if (!userSnap.exists()) throw new Error('Profile not found');
-  return userSnap.data();
-};
-
 export const profileService = {
   getCurrentUserProfile,
   updateProfile,
@@ -246,5 +201,6 @@ export const profileService = {
   addExperience,
   addInterest,
   addSkill,
-  getUserProfile
+  getUserProfile,
+  updateUserRole
 };

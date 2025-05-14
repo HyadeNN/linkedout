@@ -8,7 +8,7 @@ import PostList from './PostList';
 import Header from '../common/Header';
 import './Feed.css';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { FaHashtag, FaSortAmountDown, FaSortAmountUp } from 'react-icons/fa';
+import { FaHashtag, FaClock, FaHistory } from 'react-icons/fa';
 
 const Feed = () => {
   const { user } = useAuth();
@@ -28,7 +28,7 @@ const Feed = () => {
     const params = new URLSearchParams(location.search);
     const hashtagParam = params.get('hashtag');
     const searchParam = params.get('search');
-    const sortParam = params.get('sort');
+    const sortParam = params.get('sort') || 'desc';
     
     if (hashtagParam) {
       setSelectedHashtag(hashtagParam);
@@ -36,9 +36,7 @@ const Feed = () => {
     if (searchParam) {
       setSearchTerm(searchParam);
     }
-    if (sortParam) {
-      setSortDirection(sortParam);
-    }
+    setSortDirection(sortParam);
   }, [location]);
 
   // Fetch posts with hashtag filter and sorting
@@ -46,67 +44,45 @@ const Feed = () => {
     const fetchPosts = async () => {
       try {
         setLoading(true);
-        let postsQuery;
         
+        let postsData;
         if (selectedHashtag) {
-          postsQuery = query(
-            collection(db, 'posts'),
-            where('hashtags', 'array-contains', '#' + selectedHashtag),
-            orderBy('createdAt', sortDirection)
-          );
+          postsData = await postService.getPosts({
+            hashtag: selectedHashtag,
+            sortDirection
+          });
         } else {
-          postsQuery = query(
-            collection(db, 'posts'),
-            orderBy('createdAt', sortDirection)
-          );
+          postsData = await postService.getFeedPosts(sortDirection);
         }
 
-        const snapshot = await getDocs(postsQuery);
-        const postsData = await Promise.all(
-          snapshot.docs.map(async (doc) => {
-            const postData = doc.data();
-            const post = {
-              id: doc.id,
-              content: postData.content,
-              image_url: postData.imageUrl,
-              created_at: postData.createdAt?.toDate?.() || new Date(),
-              hashtags: postData.hashtags || [],
-              likes_count: postData.likesCount || 0,
-              comments_count: postData.commentsCount || 0,
-              author_id: postData.userId
-            };
+        // Format posts for consistency with the component's data structure
+        const formattedPosts = postsData.map(post => ({
+          id: post.id,
+          content: post.content,
+          image_url: post.imageUrl,
+          created_at: post.createdAt || new Date(),
+          hashtags: post.hashtags || [],
+          likes_count: post.likes_count || 0,
+          comments_count: post.comments_count || 0,
+          author_id: post.userId,
+          author: {
+            name: post.user?.name || '',
+            headline: post.user?.headline || '',
+            profile_image: post.user?.profile?.profile_image || null
+          }
+        }));
 
-            // Fetch author data
-            if (postData.userId) {
-              const authorDoc = await getDocs(query(collection(db, 'users'), where('uid', '==', postData.userId)));
-              if (!authorDoc.empty) {
-                const authorData = authorDoc.docs[0].data();
-                post.author = {
-                  first_name: authorData.name?.split(' ')[0] || '',
-                  last_name: authorData.name?.split(' ').slice(1).join(' ') || '',
-                  profile: {
-                    headline: authorData.headline || '',
-                    profile_image: authorData.profile?.profile_image || null
-                  }
-                };
-              }
-            }
-
-            return post;
-          })
-        );
-
-        setPosts(postsData);
-        setFilteredPosts(postsData);
+        setPosts(formattedPosts);
+        setFilteredPosts(formattedPosts);
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching posts:', error);
-      } finally {
         setLoading(false);
       }
     };
 
     fetchPosts();
-  }, [selectedHashtag, sortDirection]); // sortDirection değiştiğinde yeniden çek
+  }, [selectedHashtag, sortDirection]);
 
   // Arama sonuçlarını güncelle
   useEffect(() => {
@@ -119,8 +95,7 @@ const Feed = () => {
     const searchLower = searchTerm.toLowerCase();
     const results = posts.filter(post => 
       post.content.toLowerCase().includes(searchLower) ||
-      post.author?.first_name.toLowerCase().includes(searchLower) ||
-      post.author?.last_name.toLowerCase().includes(searchLower)
+      post.author?.name.toLowerCase().includes(searchLower)
     );
     
     setSearchResults(results);
@@ -240,8 +215,10 @@ const Feed = () => {
                 </div>
               )}
               <button onClick={toggleSortDirection} className="sort-button">
-                {sortDirection === 'desc' ? <FaSortAmountDown /> : <FaSortAmountUp />}
-                <span>{sortDirection === 'desc' ? 'En Yeni' : 'En Eski'}</span>
+                {sortDirection === 'desc' 
+                  ? <><FaClock /> <span>En Yeni</span></> 
+                  : <><FaHistory /> <span>En Eski</span></>
+                }
               </button>
             </div>
           </div>
@@ -266,14 +243,12 @@ const Feed = () => {
                   <div
                     key={index}
                     className="search-result-item"
-                    onClick={() => handleSearchResultClick(
-                      result.author?.first_name + ' ' + result.author?.last_name
-                    )}
+                    onClick={() => handleSearchResultClick(result.name)}
                   >
                     <div className="result-author">
-                      {result.author?.first_name} {result.author?.last_name}
+                      {result.name}
                     </div>
-                    <div className="result-preview">{result.content.slice(0, 50)}...</div>
+                    <div className="result-preview">{result.headline.slice(0, 50)}...</div>
                   </div>
                 ))}
               </div>

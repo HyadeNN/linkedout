@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getCurrentUserData } from '../services/user';
 import { postService } from '../services';
 import './Navbar.css';
+import logo from '../assets/images/linkedout-logo.svg';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -104,8 +105,8 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
-            <Link to="/" className="text-xl font-bold text-blue-600">
-              LinkedOut
+            <Link to="/" className="nav-logo">
+              <img src={logo} alt="LinkedOut" />
             </Link>
             <div className="search-container">
               <form onSubmit={handleSearchSubmit} className="search-form">
@@ -160,7 +161,6 @@ const Navbar = () => {
               <Link to="/feed" className="nav-link">Feed</Link>
               <Link to="/network" className="nav-link">Network</Link>
               <Link to="/jobs" className="nav-link">Jobs</Link>
-              <Link to="/chat" className="nav-link">Chat</Link>
             </div>
           </div>
 

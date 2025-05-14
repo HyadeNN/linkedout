@@ -3,11 +3,14 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_, and_, func
 from firebase_admin import firestore
+import uuid
+from datetime import datetime
 
 from app.model.job import Job, JobApplication, SavedJob
 from app.model.user import User
 from app.model.notification import Notification
 from app.schema.job import JobCreate, JobUpdate, JobApplicationCreate, JobApplicationUpdate, SavedJobCreate
+from app.service.user import get_user
 
 
 def get_job(db: firestore.Client, job_id: str) -> Optional[Job]:
@@ -226,7 +229,7 @@ def get_job_application(db: firestore.Client, application_id: str) -> Optional[J
     if not doc.exists:
         return None
     
-    return JobApplication.from_dict(doc.to_dict())
+    return JobApplication.from_dict(doc.to_dict(), application_id)
 
 
 def create_job_application(db: firestore.Client, applicant_id: str, application_data: JobApplicationCreate) -> JobApplication:
@@ -238,9 +241,11 @@ def create_job_application(db: firestore.Client, applicant_id: str, application_
         raise HTTPException(status_code=404, detail="Job not found or inactive")
 
     # Check if user has already applied
-    existing_application = get_job_application(db, application_data.id)
-
-    if existing_application:
+    applications_ref = db.collection('job_applications')
+    query = applications_ref.where('job_id', '==', application_data.job_id).where('applicant_id', '==', applicant_id)
+    docs = query.get()
+    
+    if docs:
         raise HTTPException(status_code=400, detail="You have already applied for this job")
 
     # Create application
@@ -251,24 +256,31 @@ def create_job_application(db: firestore.Client, applicant_id: str, application_
         status="pending"
     )
 
+    # Generate a unique ID for the application
+    application_id = str(uuid.uuid4())
+
     # Add application to Firestore
-    application_ref = db.collection('job_applications').document(application_data.id)
+    application_ref = db.collection('job_applications').document(application_id)
     application_ref.set(db_application.to_dict())
+    
+    # Set the application ID
+    db_application.application_id = application_id
 
     # Create notification for job poster
     applicant = get_user(db, applicant_id)
 
+    notification_id = str(uuid.uuid4())
     notification = Notification(
         user_id=job.poster_id,
         type="job_application",
         message=f"{applicant.first_name} {applicant.last_name} applied for your job posting: {job.title}",
-        source_id=application_data.id,
+        source_id=application_id,
         source_type="job_application",
         created_by=applicant_id
     )
 
     # Add notification to Firestore
-    notification_ref = db.collection('notifications').document(notification.id)
+    notification_ref = db.collection('notifications').document(notification_id)
     notification_ref.set(notification.to_dict())
 
     return db_application
@@ -283,7 +295,7 @@ def update_job_application_status(db: firestore.Client, application_id: str, use
     if not doc.exists:
         raise HTTPException(status_code=404, detail="Job application not found")
     
-    db_application = JobApplication.from_dict(doc.to_dict())
+    db_application = JobApplication.from_dict(doc.to_dict(), application_id)
 
     # Check if user is the job poster
     job = get_job(db, db_application.job_id)
@@ -292,11 +304,13 @@ def update_job_application_status(db: firestore.Client, application_id: str, use
 
     # Update status
     db_application.status = application_data.status
-    application_ref.update(db_application.to_dict())
+    db_application.updated_at = datetime.utcnow()
+    application_ref.update({"status": application_data.status, "updated_at": db_application.updated_at})
 
     # Create notification for applicant
     employer = get_user(db, user_id)
 
+    notification_id = str(uuid.uuid4())
     notification_message = f"Your application for {job.title} has been {application_data.status}"
 
     notification = Notification(
@@ -309,7 +323,7 @@ def update_job_application_status(db: firestore.Client, application_id: str, use
     )
 
     # Add notification to Firestore
-    notification_ref = db.collection('notifications').document(notification.id)
+    notification_ref = db.collection('notifications').document(notification_id)
     notification_ref.set(notification.to_dict())
 
     return db_application
@@ -318,6 +332,14 @@ def update_job_application_status(db: firestore.Client, application_id: str, use
 def get_job_applications(db: firestore.Client, job_id: str, user_id: str, skip: int = 0, limit: int = 50) -> List[
     JobApplication]:
     """Get all applications for a job."""
+    # Check if user is the job poster
+    job = get_job(db, job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    if job.poster_id != user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view these applications")
+    
     applications_ref = db.collection('job_applications')
     query = applications_ref.where('job_id', '==', job_id).order_by('created_at', direction=firestore.Query.DESCENDING)
     
@@ -328,24 +350,13 @@ def get_job_applications(db: firestore.Client, job_id: str, user_id: str, skip: 
         query = query.limit(limit)
     
     docs = query.get()
-    applications = [JobApplication.from_dict(doc.to_dict()) for doc in docs]
+    applications = [JobApplication.from_dict(doc.to_dict(), doc.id) for doc in docs]
     
-    # Check if user is the job poster
-    job = get_job(db, job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    if job.poster_id != user_id:
-        raise HTTPException(status_code=403, detail="Not authorized to view these applications")
-
     return applications
 
 
 def count_job_applications(db: firestore.Client, job_id: str, user_id: str) -> int:
     """Count the total number of applications for a job."""
-    applications_ref = db.collection('job_applications')
-    query = applications_ref.where('job_id', '==', job_id)
-    
     # Check if user is the job poster
     job = get_job(db, job_id)
     if not job:
@@ -353,8 +364,12 @@ def count_job_applications(db: firestore.Client, job_id: str, user_id: str) -> i
 
     if job.poster_id != user_id:
         raise HTTPException(status_code=403, detail="Not authorized to view these applications")
-
-    return len(query.get())
+        
+    applications_ref = db.collection('job_applications')
+    query = applications_ref.where('job_id', '==', job_id)
+    docs = query.get()
+    
+    return len(docs)
 
 
 def get_user_applications(db: firestore.Client, user_id: str, skip: int = 0, limit: int = 50) -> List[JobApplication]:
@@ -369,7 +384,7 @@ def get_user_applications(db: firestore.Client, user_id: str, skip: int = 0, lim
         query = query.limit(limit)
     
     docs = query.get()
-    applications = [JobApplication.from_dict(doc.to_dict()) for doc in docs]
+    applications = [JobApplication.from_dict(doc.to_dict(), doc.id) for doc in docs]
     
     return applications
 
@@ -378,8 +393,9 @@ def count_user_applications(db: firestore.Client, user_id: str) -> int:
     """Count the total number of job applications by a specific user."""
     applications_ref = db.collection('job_applications')
     query = applications_ref.where('applicant_id', '==', user_id)
+    docs = query.get()
     
-    return len(query.get())
+    return len(docs)
 
 
 # Saved job functions
@@ -468,4 +484,4 @@ def is_job_applied(db: firestore.Client, user_id: str, job_id: str) -> bool:
     query = applications_ref.where('job_id', '==', job_id).where('applicant_id', '==', user_id)
     docs = query.get()
     
-    return docs.exists
+    return len(docs) > 0

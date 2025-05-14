@@ -1,0 +1,61 @@
+/* Auth sayfaları için stiller */
+.role-selection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.role-option {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.role-option:hover {
+  border-color: #0a66c2;
+  background-color: rgba(10, 102, 194, 0.05);
+}
+
+.role-option.selected {
+  border-color: #0a66c2;
+  background-color: rgba(10, 102, 194, 0.1);
+}
+
+.role-option input[type="radio"] {
+  position: absolute;
+  right: 15px;
+  top: 15px;
+  accent-color: #0a66c2;
+}
+
+.role-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+}
+
+.role-label {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: #333;
+}
+
+.role-description {
+  font-size: 0.9rem;
+  color: #666;
+}
+
+@media (min-width: 768px) {
+  .role-selection {
+    flex-direction: row;
+  }
+  
+  .role-option {
+    flex: 1;
+  }
+} 

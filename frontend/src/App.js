@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AuthProvider } from './contexts/AuthContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { ConnectionProvider } from './contexts/ConnectionContext';
+
+// Custom route components
+import PrivateRoute from './components/routes/PrivateRoute';
+import PublicRoute from './components/routes/PublicRoute';
 
 // Layouts
 import MainLayout from './layouts/MainLayout';
@@ -19,6 +23,7 @@ import ForgotPassword from './pages/Auth/ForgotPassword';
 import ResetPassword from './pages/Auth/ResetPassword';
 import Profile from './pages/Profile';
 import EditProfile from './pages/EditProfile';
+import ProfileSettings from './pages/ProfileSettings';
 import Network from './pages/Network';
 import Jobs from './pages/Jobs';
 import JobDetail from './pages/JobDetail';
@@ -26,7 +31,7 @@ import CreateJob from './pages/CreateJob';
 import MyJobs from './pages/MyJobs';
 import SavedJobs from './pages/SavedJobs';
 import Applications from './pages/Applications';
-import Notifications from './pages/Notifications';
+import ApplicationDetail from './pages/Jobs/ApplicationDetail';
 import PostDetail from './pages/PostDetail';
 import UserProfile from './pages/UserProfile';
 import NotFound from './pages/NotFound';
@@ -43,30 +48,6 @@ import CommunityGuidelines from './pages/CommunityGuidelines';
 import PrivacyTerms from './pages/PrivacyTerms';
 import MobileApp from './pages/MobileApp';
 import Search from './pages/Search';
-import Chat from './pages/Chat';
-import Notices from './pages/Notices';
-
-// Private Route component
-const PrivateRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  return isAuthenticated ? children : <Navigate to="/auth/login" />;
-};
-
-// Public Route component (redirects to home if already authenticated)
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  return isAuthenticated ? <Navigate to="/" /> : children;
-};
 
 function App() {
   return (
@@ -144,6 +125,13 @@ function App() {
                       </MainLayout>
                     </PrivateRoute>
                   } />
+                  <Route path="/profile/settings" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <ProfileSettings />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
                   <Route path="/network" element={
                     <PrivateRoute>
                       <MainLayout>
@@ -151,15 +139,23 @@ function App() {
                       </MainLayout>
                     </PrivateRoute>
                   } />
-                  <Route path="/jobs" element={<PrivateRoute><Jobs /></PrivateRoute>} />
-                  <Route path="/jobs/:jobId" element={
+                  
+                  {/* Job Routes */}
+                  <Route path="/jobs" element={
                     <PrivateRoute>
                       <MainLayout>
-                        <JobDetail />
+                        <Jobs />
                       </MainLayout>
                     </PrivateRoute>
                   } />
                   <Route path="/jobs/create" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <CreateJob />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  <Route path="/jobs/:jobId/edit" element={
                     <PrivateRoute>
                       <MainLayout>
                         <CreateJob />
@@ -180,20 +176,28 @@ function App() {
                       </MainLayout>
                     </PrivateRoute>
                   } />
-                  <Route path="/applications" element={
+                  <Route path="/jobs/applications" element={
                     <PrivateRoute>
                       <MainLayout>
                         <Applications />
                       </MainLayout>
                     </PrivateRoute>
                   } />
-                  <Route path="/notifications" element={
+                  <Route path="/jobs/applications/:applicationId" element={
                     <PrivateRoute>
                       <MainLayout>
-                        <Notifications />
+                        <ApplicationDetail />
                       </MainLayout>
                     </PrivateRoute>
                   } />
+                  <Route path="/jobs/:jobId" element={
+                    <PrivateRoute>
+                      <MainLayout>
+                        <JobDetail />
+                      </MainLayout>
+                    </PrivateRoute>
+                  } />
+                  
                   <Route path="/posts/:postId" element={
                     <PrivateRoute>
                       <MainLayout>
@@ -220,8 +224,6 @@ function App() {
                   <Route path="/privacy-terms" element={<PrivacyTerms />} />
                   <Route path="/mobile" element={<MobileApp />} />
                   <Route path="/search" element={<PrivateRoute><Search /></PrivateRoute>} />
-                  <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
-                  <Route path="/notices" element={<PrivateRoute><Notices /></PrivateRoute>} />
 
                   {/* 404 Route */}
                   <Route path="*" element={<NotFound />} />
