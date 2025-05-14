@@ -22,6 +22,7 @@ export const createTeam = async (teamData) => {
     try {
         const { name, description, members } = teamData;
         const currentUser = auth.currentUser;
+        const now = new Date().toISOString();
 
         const teamDoc = await addDoc(teamsRef, {
             name,
@@ -32,12 +33,12 @@ export const createTeam = async (teamData) => {
                 {
                     uid: currentUser.uid,
                     role: 'admin',
-                    joinedAt: serverTimestamp()
+                    joinedAt: now
                 },
                 ...members.map(member => ({
                     uid: member,
                     role: 'member',
-                    joinedAt: serverTimestamp()
+                    joinedAt: now
                 }))
             ],
             updatedAt: serverTimestamp()
@@ -164,12 +165,14 @@ export const addTeamMember = async (teamId, memberId) => {
 
         if (!teamDoc.exists()) throw new Error('Team not found');
 
+        const now = new Date().toISOString();
+
         // Add member to team
         await updateDoc(teamRef, {
             members: arrayUnion({
                 uid: memberId,
                 role: 'member',
-                joinedAt: serverTimestamp()
+                joinedAt: now
             })
         });
 
@@ -224,6 +227,42 @@ export const updateTeam = async (teamId, updateData) => {
         });
     } catch (error) {
         console.error('Error updating team:', error);
+        throw error;
+    }
+};
+
+// Get team details by ID
+export const getTeamById = async (teamId) => {
+    try {
+        const teamRef = doc(db, 'teams', teamId);
+        const teamDoc = await getDoc(teamRef);
+        
+        if (!teamDoc.exists()) return null;
+
+        const teamData = teamDoc.data();
+        
+        // Get member details
+        const memberPromises = teamData.members.map(async (member) => {
+            const memberDoc = await getDoc(doc(db, 'users', member.uid));
+            const userData = memberDoc.data();
+            return {
+                ...member,
+                name: userData?.name || '',
+                email: userData?.email || '',
+                profile_image: userData?.profile?.profile_image || '',
+                headline: userData?.headline || ''
+            };
+        });
+        
+        const membersWithDetails = await Promise.all(memberPromises);
+        
+        return {
+            id: teamDoc.id,
+            ...teamData,
+            members: membersWithDetails
+        };
+    } catch (error) {
+        console.error('Error getting team details:', error);
         throw error;
     }
 }; 

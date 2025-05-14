@@ -39,6 +39,9 @@ const Network = () => {
   const [newTeamName, setNewTeamName] = useState('');
   const [selectedConnections, setSelectedConnections] = useState([]);
   const [isCreatingTeam, setIsCreatingTeam] = useState(false);
+  const [teams, setTeams] = useState([]);
+  const [teamMembers, setTeamMembers] = useState([]);
+  const [loadingTeams, setLoadingTeams] = useState(false);
 
   // Fetch all users except current user and already connected users
   useEffect(() => {
@@ -227,6 +230,50 @@ const Network = () => {
       fetchFriendRequests();
     }
   }, []);
+
+  // Fetch user's teams and their members
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        setLoadingTeams(true);
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (!userDoc.exists()) return;
+        
+        const userTeams = userDoc.data().teams || [];
+        const teamDetailsPromises = userTeams.map(teamId => teamService.getTeamById(teamId));
+        const teamsData = await Promise.all(teamDetailsPromises);
+        
+        // Filter out null results (teams that might have been deleted)
+        const validTeams = teamsData.filter(team => team !== null);
+        setTeams(validTeams);
+        
+        // Collect all unique members from all teams
+        const allMembers = new Set();
+        validTeams.forEach(team => {
+          team.members.forEach(member => {
+            if (member.uid !== user.uid) { // Exclude current user
+              allMembers.add(JSON.stringify(member));
+            }
+          });
+        });
+        
+        setTeamMembers(Array.from(allMembers).map(member => JSON.parse(member)));
+      } catch (error) {
+        console.error('Error fetching team members:', error);
+        setError('Failed to load team members. Please try again later.');
+      } finally {
+        setLoadingTeams(false);
+      }
+    };
+
+    if (selectedTab === 'teammates') {
+      fetchTeamMembers();
+    }
+  }, [selectedTab, user]);
 
   // Handle connect
   const handleConnect = async (userId) => {
@@ -522,6 +569,190 @@ const Network = () => {
     );
   };
 
+  const renderTeammates = () => {
+    if (loadingTeams) {
+      return (
+        <Box display="flex" justifyContent="center" my={4}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (teams.length === 0) {
+      return (
+        <Box 
+          display="flex" 
+          flexDirection="column" 
+          alignItems="center" 
+          justifyContent="center" 
+          minHeight="200px"
+          sx={{
+            backgroundColor: 'background.paper',
+            borderRadius: 2,
+            p: 4,
+            textAlign: 'center',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+          }}
+        >
+          <FaUsers size={48} style={{ color: '#9e9e9e', marginBottom: '16px' }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            Henüz Hiç Takımınız Yok
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Yeni bir takım oluşturarak veya mevcut bir takıma katılarak başlayabilirsiniz.
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <Box sx={{ py: 3 }}>
+        <Typography 
+          variant="h5" 
+          gutterBottom 
+          sx={{ 
+            mb: 4, 
+            fontWeight: 600,
+            position: 'relative',
+            '&:after': {
+              content: '""',
+              position: 'absolute',
+              bottom: '-8px',
+              left: 0,
+              width: '60px',
+              height: '4px',
+              backgroundColor: 'primary.main',
+              borderRadius: '2px'
+            }
+          }}
+        >
+          Takımlarınız
+        </Typography>
+
+        {teams.map((team) => (
+          <Box key={team.id} sx={{ mb: 6 }}>
+            <Box 
+              sx={{ 
+                display: 'flex', 
+                alignItems: 'center',
+                mb: 3,
+                backgroundColor: 'primary.main',
+                color: 'white',
+                p: 2,
+                borderRadius: '8px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+              }}
+            >
+              <FaUsers size={24} style={{ marginRight: '12px' }} />
+              <Typography variant="h6" sx={{ m: 0 }}>
+                {team.name}
+              </Typography>
+            </Box>
+
+            <Grid container spacing={3}>
+              {team.members
+                .filter(member => member.uid !== user?.uid) // Exclude current user
+                .map((member) => (
+                <Grid item xs={12} sm={6} md={4} key={member.uid}>
+                  <Card 
+                    sx={{ 
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      '&:hover': {
+                        transform: 'translateY(-4px)',
+                        boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
+                      }
+                    }}
+                  >
+                    <CardContent sx={{ flex: 1, p: 3 }}>
+                      <Box 
+                        display="flex" 
+                        flexDirection="column" 
+                        alignItems="center" 
+                        textAlign="center"
+                      >
+                        <Avatar 
+                          src={member.profile_image || defaultProfileImage} 
+                          sx={{ 
+                            width: 100, 
+                            height: 100, 
+                            mb: 2,
+                            border: '4px solid',
+                            borderColor: 'primary.main'
+                          }}
+                        />
+                        <Typography 
+                          variant="h6" 
+                          sx={{ 
+                            mb: 1,
+                            fontWeight: 600
+                          }}
+                        >
+                          {member.name}
+                        </Typography>
+                        <Typography 
+                          variant="body2" 
+                          color="text.secondary"
+                          sx={{ 
+                            mb: 2,
+                            fontStyle: 'italic'
+                          }}
+                        >
+                          {member.headline || 'Takım Üyesi'}
+                        </Typography>
+                        <Box 
+                          sx={{ 
+                            display: 'flex',
+                            alignItems: 'center',
+                            backgroundColor: 'background.paper',
+                            border: '1px solid',
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            py: 0.5,
+                            px: 2,
+                            borderRadius: '20px',
+                            fontSize: '0.875rem'
+                          }}
+                        >
+                          <FaUsers style={{ marginRight: '8px' }} />
+                          {member.role === 'admin' ? 'Takım Lideri' : 'Takım Üyesi'}
+                        </Box>
+                      </Box>
+                    </CardContent>
+                    <Box 
+                      sx={{ 
+                        p: 2, 
+                        borderTop: '1px solid',
+                        borderColor: 'divider',
+                        display: 'flex',
+                        justifyContent: 'center',
+                        gap: 1
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<FaLink />}
+                        sx={{ 
+                          borderRadius: '20px',
+                          textTransform: 'none'
+                        }}
+                      >
+                        Profili Görüntüle
+                      </Button>
+                    </Box>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Box>
+        ))}
+      </Box>
+    );
+  };
+
   const renderContent = () => {
     switch (selectedTab) {
       case 'connections':
@@ -602,6 +833,7 @@ const Network = () => {
       case 'teammates':
         return (
           <Box>
+            {renderTeammates()}
             {/* Team Creation Form */}
             <Card sx={{ mb: 4, p: 2 }}>
               <Typography variant="h6" gutterBottom>
@@ -665,42 +897,6 @@ const Network = () => {
                 {isCreatingTeam ? <CircularProgress size={24} /> : 'Create Team'}
               </Button>
             </Card>
-
-            {/* Existing Teammates Section */}
-            <Typography variant="h5" gutterBottom>
-              Your Teammates
-            </Typography>
-            {teammates.length > 0 ? (
-              <Grid container spacing={3}>
-                {teammates.map((teammate) => (
-                  <Grid item xs={12} sm={6} md={4} key={teammate.id}>
-                    <Card>
-                      <CardContent>
-                        <Box display="flex" alignItems="center" mb={2}>
-                          <Avatar src={teammate.profile_image || defaultProfileImage} />
-                          <Box ml={2}>
-                            <Typography variant="h6">{teammate.name}</Typography>
-                            <Typography variant="body2" color="textSecondary">
-                              {teammate.role}
-                            </Typography>
-                          </Box>
-                        </Box>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          fullWidth
-                          onClick={() => handleRemoveTeammate(teammate.id)}
-                        >
-                          Remove Teammate
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <Typography color="textSecondary">No teammates yet</Typography>
-            )}
 
             <Box mt={4}>
               <Typography variant="h5" gutterBottom>

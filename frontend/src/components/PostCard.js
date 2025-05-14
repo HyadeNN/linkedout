@@ -2,56 +2,56 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { postService } from '../services';
 import { db } from '../firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { FaThumbsUp, FaRegThumbsUp, FaComment, FaShare, FaHashtag } from 'react-icons/fa';
 import './PostCard.css';
 
 const PostCard = ({ post, onUpdatePost }) => {
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(post.likes_count || 0);
+  const [likesCount, setLikesCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     const checkIfLiked = async () => {
+      if (!user || !post.id) return;
+      
       try {
-        if (user) {
-          const liked = await postService.isPostLiked(post.id, user.uid);
-          setIsLiked(liked);
+        const postDoc = await getDoc(doc(db, 'posts', post.id));
+        if (postDoc.exists()) {
+          const postData = postDoc.data();
+          const likes = postData.likes || [];
+          setIsLiked(likes.includes(user.uid));
+          setLikesCount(likes.length);
         }
       } catch (error) {
         console.error('Failed to check if post is liked:', error);
       }
     };
 
-    const getLikesCount = async () => {
-      try {
-        const count = await postService.getPostLikesCount(post.id);
-        setLikesCount(count);
-      } catch (error) {
-        console.error('Failed to get likes count:', error);
-      }
-    };
-
     checkIfLiked();
-    getLikesCount();
   }, [post.id, user]);
 
   const handleLikeToggle = async () => {
     if (!user) {
-      // Handle not logged in case
-      alert('Please log in to like posts');
+      alert('Beğenmek için giriş yapmalısınız');
       return;
     }
 
     try {
       setLoading(true);
+      const postRef = doc(db, 'posts', post.id);
       
       if (isLiked) {
-        await postService.unlikePost(post.id, user.uid);
+        await updateDoc(postRef, {
+          likes: arrayRemove(user.uid)
+        });
         setLikesCount(prev => prev - 1);
         setIsLiked(false);
       } else {
-        await postService.likePost(post.id, user.uid);
+        await updateDoc(postRef, {
+          likes: arrayUnion(user.uid)
+        });
         setLikesCount(prev => prev + 1);
         setIsLiked(true);
       }
@@ -64,14 +64,14 @@ const PostCard = ({ post, onUpdatePost }) => {
       }
     } catch (error) {
       console.error('Failed to toggle like:', error);
-      alert('Failed to update like. Please try again.');
+      alert('Beğeni işlemi başarısız oldu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleHashtagClick = (hashtag) => {
-    // You can implement hashtag filtering here
+    // Hashtag'e tıklandığında yapılacak işlemler
     console.log('Hashtag clicked:', hashtag);
   };
 
@@ -80,12 +80,13 @@ const PostCard = ({ post, onUpdatePost }) => {
       <div className="post-header">
         <a className="post-author" href={`/users/${post.userId}`}>
           <img 
-            src={post.author?.profileImage || '/default-avatar.jpg'} 
-            alt={post.author?.name || 'User'} 
+            src={post.user?.profile?.profile_image || '/default-avatar.jpg'} 
+            alt={post.user?.name || 'Kullanıcı'} 
             className="author-avatar"
           />
           <div className="author-info">
-            <span className="author-name">{post.author?.name || 'User'}</span>
+            <span className="author-name">{post.user?.name || 'Kullanıcı'}</span>
+            <span className="author-headline">{post.user?.headline || ''}</span>
             <span className="post-date">{new Date(post.createdAt).toLocaleString()}</span>
           </div>
         </a>
@@ -93,23 +94,25 @@ const PostCard = ({ post, onUpdatePost }) => {
 
       <div className="post-content">
         <p className="post-text">{post.content}</p>
-        {post.imageUrl && (
-          <div className="post-image-container">
-            <img src={post.imageUrl} alt="Post" className="post-image" />
-          </div>
-        )}
         
         {post.hashtags && post.hashtags.length > 0 && (
           <div className="post-hashtags">
             {post.hashtags.map((hashtag, index) => (
               <button
                 key={index}
-                className="post-hashtag"
+                className="hashtag-button"
                 onClick={() => handleHashtagClick(hashtag)}
               >
-                {hashtag}
+                <FaHashtag className="hashtag-icon" />
+                {hashtag.replace(/^#/, '')}
               </button>
             ))}
+          </div>
+        )}
+
+        {post.imageUrl && (
+          <div className="post-image-container">
+            <img src={post.imageUrl} alt="Post" className="post-image" />
           </div>
         )}
       </div>
@@ -117,14 +120,15 @@ const PostCard = ({ post, onUpdatePost }) => {
       <div className="post-stats">
         {likesCount > 0 && (
           <div className="likes-count">
-            <span className="like-icon">👍</span>
-            <span>{likesCount}</span>
+            <FaThumbsUp className="like-icon" style={{ color: '#0073b1' }} />
+            <span>{likesCount} beğeni</span>
           </div>
         )}
         
         {post.comments_count > 0 && (
           <div className="comments-count">
-            {post.comments_count} comment{post.comments_count !== 1 ? 's' : ''}
+            <FaComment className="comment-icon" />
+            <span>{post.comments_count} yorum</span>
           </div>
         )}
       </div>
@@ -135,26 +139,36 @@ const PostCard = ({ post, onUpdatePost }) => {
           onClick={handleLikeToggle}
           disabled={loading}
         >
-          <span className="action-icon">👍</span>
-          <span>Like</span>
+          {isLiked ? (
+            <FaThumbsUp className="action-icon" />
+          ) : (
+            <FaRegThumbsUp className="action-icon" />
+          )}
+          <span>Beğen</span>
         </button>
 
         <button className="action-btn">
-          <span className="action-icon">💬</span>
-          <span>Comment</span>
+          <FaComment className="action-icon" />
+          <span>Yorum Yap</span>
         </button>
 
         <button
           className="action-btn"
           onClick={() => {
             navigator.clipboard.writeText(window.location.href);
-            alert('Post link copied to clipboard!');
+            alert('Gönderi bağlantısı panoya kopyalandı!');
           }}
         >
-          <span className="action-icon">↗️</span>
-          <span>Share</span>
+          <FaShare className="action-icon" />
+          <span>Paylaş</span>
         </button>
       </div>
+
+      {post.comment_section && (
+        <div className="comment-section">
+          {post.comment_section}
+        </div>
+      )}
     </div>
   );
 };
