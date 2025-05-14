@@ -1,12 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getCurrentUserData } from '../services/user';
+import { postService } from '../services';
 import './Navbar.css';
 
 const Navbar = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { currentUser, signOut } = useAuth();
   const [userData, setUserData] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showResults, setShowResults] = useState(false);
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -24,10 +30,74 @@ const Navbar = () => {
     fetchUserData();
   }, [currentUser]);
 
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) return;
+
+    if (searchTerm.startsWith('#')) {
+      // Hashtag araması
+      const hashtag = searchTerm.substring(1);
+      window.location.href = `/?hashtag=${encodeURIComponent(hashtag)}`;
+    } else {
+      // Normal arama
+      window.location.href = `/search?q=${encodeURIComponent(searchTerm)}`;
+    }
+    setSearchResults([]);
+    setShowResults(false);
+    setSearchTerm('');
+  };
+
+  const handleResultClick = (result) => {
+    if (result.matchType === 'hashtag') {
+      const hashtag = result.hashtags[0].replace('#', '');
+      window.location.href = `/?hashtag=${encodeURIComponent(hashtag)}`;
+    } else {
+      // Post detay sayfasına yönlendir
+      window.location.href = `/post/${result.id}`;
+    }
+    setSearchResults([]);
+    setShowResults(false);
+    setSearchTerm('');
+  };
+
+  // URL değişikliklerini izle
+  useEffect(() => {
+    console.log('Current location:', location.pathname + location.search);
+  }, [location]);
+
+  // Arama işlemi için debounce fonksiyonu
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (searchTerm) {
+        console.log('Performing search for:', searchTerm);
+        handleSearch();
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
+
+  const handleSearch = async () => {
+    try {
+      const results = await postService.searchPosts(searchTerm);
+      console.log('Search results:', results);
+      setSearchResults(results);
+      setShowResults(true);
+    } catch (error) {
+      console.error('Error searching:', error);
+    }
+  };
+
   // Debug için eklendi
   useEffect(() => {
     console.log("Current userData state:", userData);
   }, [userData]);
+
+  useEffect(() => {
+    console.log("Search Results:", searchResults);
+  }, [searchResults]);
 
   return (
     <nav className="bg-white shadow-md">
@@ -37,6 +107,55 @@ const Navbar = () => {
             <Link to="/" className="text-xl font-bold text-blue-600">
               LinkedOut
             </Link>
+            <div className="search-container">
+              <form onSubmit={handleSearchSubmit} className="search-form">
+                <input
+                  type="text"
+                  className="nav-search-input"
+                  placeholder="Hashtag için # kullanın veya içerik arayın"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onFocus={() => setShowResults(true)}
+                />
+                <button type="submit" className="search-button">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                  </svg>
+                </button>
+              </form>
+              {showResults && searchResults.length > 0 && (
+                <div className="search-results">
+                  {searchResults.map((result) => (
+                    <div
+                      key={result.id}
+                      className="search-result-item"
+                      onClick={() => handleResultClick(result)}
+                    >
+                      <div className="result-content">
+                        {result.matchType === 'hashtag' ? (
+                          <div className="hashtag-result">
+                            <span className="hashtag-icon">#</span>
+                            {result.hashtags[0].replace('#', '')}
+                          </div>
+                        ) : (
+                          <>
+                            <img
+                              src={result.user.profile.profile_image || '/default-avatar.jpg'}
+                              alt={result.user.name}
+                              className="result-avatar"
+                            />
+                            <div className="result-text">
+                              <div className="result-name">{result.user.name}</div>
+                              <div className="result-preview">{result.content.substring(0, 100)}...</div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="hidden md:flex items-center space-x-4">
               <Link to="/feed" className="nav-link">Feed</Link>
               <Link to="/network" className="nav-link">Network</Link>

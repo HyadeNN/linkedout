@@ -7,6 +7,7 @@ import NewPost from './NewPost';
 import PostList from './PostList';
 import Header from '../common/Header';
 import './Feed.css';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Feed = () => {
   const { user } = useAuth();
@@ -14,6 +15,66 @@ const Feed = () => {
   const [loading, setLoading] = useState(true);
   const [selectedHashtag, setSelectedHashtag] = useState(null);
   const [trendingHashtags, setTrendingHashtags] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredPosts, setFilteredPosts] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // URL'den parametreleri al
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const hashtagParam = params.get('hashtag');
+    const searchParam = params.get('search');
+    
+    if (hashtagParam) {
+      setSelectedHashtag(hashtagParam);
+    }
+    if (searchParam) {
+      setSearchTerm(searchParam);
+    }
+  }, [location]);
+
+  // Arama sonuçlarını güncelle
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setSearchResults([]);
+      setFilteredPosts(posts);
+      return;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    const results = posts.filter(post => 
+      post.content.toLowerCase().includes(searchLower) ||
+      post.author?.first_name.toLowerCase().includes(searchLower) ||
+      post.author?.last_name.toLowerCase().includes(searchLower)
+    );
+    
+    setSearchResults(results);
+    setFilteredPosts(results);
+  }, [searchTerm, posts]);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) return;
+
+    const params = new URLSearchParams(location.search);
+    params.set('search', searchTerm.trim());
+    if (selectedHashtag) {
+      params.set('hashtag', selectedHashtag);
+    }
+    navigate(`?${params.toString()}`);
+  };
+
+  const handleSearchResultClick = (result) => {
+    const params = new URLSearchParams(location.search);
+    params.set('search', result);
+    if (selectedHashtag) {
+      params.set('hashtag', selectedHashtag);
+    }
+    navigate(`?${params.toString()}`);
+    setSearchTerm(result);
+  };
 
   // Fetch trending hashtags
   useEffect(() => {
@@ -126,6 +187,38 @@ const Feed = () => {
         <div className="feed-main">
           <NewPost onPostCreated={handlePostCreated} />
           
+          <div className="search-wrapper">
+            <form onSubmit={handleSearch} className="search-container">
+              <input
+                type="text"
+                placeholder="Gönderi veya kişi ara..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+              <button type="submit" className="search-button">Ara</button>
+            </form>
+            
+            {searchResults.length > 0 && searchTerm && (
+              <div className="search-results">
+                {searchResults.slice(0, 5).map((result, index) => (
+                  <div
+                    key={index}
+                    className="search-result-item"
+                    onClick={() => handleSearchResultClick(
+                      result.author?.first_name + ' ' + result.author?.last_name
+                    )}
+                  >
+                    <div className="result-author">
+                      {result.author?.first_name} {result.author?.last_name}
+                    </div>
+                    <div className="result-preview">{result.content.slice(0, 50)}...</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {selectedHashtag && (
             <div className="active-filter">
               <span>Filtering by: {selectedHashtag}</span>
@@ -137,7 +230,7 @@ const Feed = () => {
             <div className="loading-indicator">Loading posts...</div>
           ) : (
             <PostList
-              posts={posts}
+              posts={filteredPosts}
               onUpdatePost={handlePostUpdate}
               onDeletePost={handlePostDelete}
               onHashtagClick={handleHashtagClick}

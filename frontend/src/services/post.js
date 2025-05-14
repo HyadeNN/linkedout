@@ -170,46 +170,59 @@ export const getUserPosts = async (userId) => {
 
 // Search posts and hashtags
 export const searchPosts = async (searchTerm) => {
-  const searchTermLower = searchTerm.toLowerCase();
-  const postsQuery = query(collection(db, 'posts'));
-  const querySnapshot = await getDocs(postsQuery);
-  
-  const results = [];
-  const hashtagSet = new Set();
-
-  querySnapshot.docs.forEach(doc => {
-    const post = { id: doc.id, ...doc.data() };
+  try {
+    const searchTermLower = searchTerm.toLowerCase();
+    const postsRef = collection(db, 'posts');
+    const q = query(postsRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
     
-    // Search in post content
-    if (post.content.toLowerCase().includes(searchTermLower)) {
-      results.push({
-        type: 'post',
-        id: post.id,
-        content: post.content,
-        author: post.author,
-        created_at: post.created_at
-      });
-    }
+    // Get posts with user data
+    const searchResults = await Promise.all(
+      querySnapshot.docs.map(async (docSnapshot) => {
+        const postData = docSnapshot.data();
+        const userDoc = await getDoc(doc(db, 'users', postData.userId));
+        const userData = userDoc.data();
 
-    // Collect unique hashtags
-    if (post.hashtags) {
-      post.hashtags.forEach(hashtag => {
-        if (hashtag.toLowerCase().includes(searchTermLower)) {
-          hashtagSet.add(hashtag);
+        // Check if post matches search criteria
+        const contentMatch = postData.content?.toLowerCase().includes(searchTermLower);
+        const hashtagMatch = postData.hashtags?.some(tag => 
+          tag.toLowerCase().includes(searchTermLower.replace('#', ''))
+        );
+
+        if (contentMatch || hashtagMatch) {
+          return {
+            id: docSnapshot.id,
+            ...postData,
+            user: {
+              id: postData.userId,
+              name: userData?.name || '',
+              headline: userData?.headline || '',
+              location: userData?.location || '',
+              bio: userData?.bio || '',
+              profile: {
+                about: userData?.profile?.about || '',
+                profile_image: userData?.profile?.profile_image || '',
+                cover_image: userData?.profile?.cover_image || ''
+              }
+            },
+            matchType: hashtagMatch ? 'hashtag' : 'content',
+            matchScore: hashtagMatch ? 2 : (
+              contentMatch ? postData.content.toLowerCase().split(searchTermLower).length - 1 : 0
+            )
+          };
         }
-      });
-    }
-  });
+        return null;
+      })
+    );
 
-  // Add hashtag results
-  hashtagSet.forEach(hashtag => {
-    results.push({
-      type: 'hashtag',
-      value: hashtag
-    });
-  });
-
-  return results;
+    // Filter out null results and sort by match score
+    return searchResults
+      .filter(Boolean)
+      .sort((a, b) => b.matchScore - a.matchScore);
+  } catch (error) {
+    console.error('Error searching posts:', error);
+    throw error;
+  }
 };
 
 // Create a comment

@@ -42,6 +42,9 @@ import SafetyCenter from './pages/SafetyCenter';
 import CommunityGuidelines from './pages/CommunityGuidelines';
 import PrivacyTerms from './pages/PrivacyTerms';
 import MobileApp from './pages/MobileApp';
+import Search from './pages/Search';
+import Chat from './pages/Chat';
+import Notices from './pages/Notices';
 
 // Private Route component
 const PrivateRoute = ({ children }) => {
@@ -148,13 +151,7 @@ function App() {
                       </MainLayout>
                     </PrivateRoute>
                   } />
-                  <Route path="/jobs" element={
-                    <PrivateRoute>
-                      <MainLayout>
-                        <Jobs />
-                      </MainLayout>
-                    </PrivateRoute>
-                  } />
+                  <Route path="/jobs" element={<PrivateRoute><Jobs /></PrivateRoute>} />
                   <Route path="/jobs/:jobId" element={
                     <PrivateRoute>
                       <MainLayout>
@@ -221,7 +218,10 @@ function App() {
                   <Route path="/safety-center" element={<SafetyCenter />} />
                   <Route path="/community-guidelines" element={<CommunityGuidelines />} />
                   <Route path="/privacy-terms" element={<PrivacyTerms />} />
-                  <Route path="/mobile-app" element={<MobileApp />} />
+                  <Route path="/mobile" element={<MobileApp />} />
+                  <Route path="/search" element={<PrivateRoute><Search /></PrivateRoute>} />
+                  <Route path="/chat" element={<PrivateRoute><Chat /></PrivateRoute>} />
+                  <Route path="/notices" element={<PrivateRoute><Notices /></PrivateRoute>} />
 
                   {/* 404 Route */}
                   <Route path="*" element={<NotFound />} />
