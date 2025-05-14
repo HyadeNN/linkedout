@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../contexts/AuthContext';
 import { postService } from '../services';
@@ -20,6 +20,7 @@ function getValidDate(date) {
 
 const Home = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -29,21 +30,37 @@ const Home = () => {
   const [likedPosts, setLikedPosts] = useState({});
   const [likeCounts, setLikeCounts] = useState({});
   const [visibleCommentSections, setVisibleCommentSections] = useState({});
+  const [activeHashtag, setActiveHashtag] = useState(null);
 
+  // URL'den hashtag'i al ve feed'i güncelle
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    const params = new URLSearchParams(location.search);
+    const hashtagFromUrl = params.get('hashtag');
+    
+    if (hashtagFromUrl) {
+      handleHashtagClick(hashtagFromUrl, false);
+    } else {
+      fetchPosts();
+    }
+  }, [location.search]);
 
-  const handleHashtagClick = async (hashtag) => {
+  const handleHashtagClick = async (hashtag, updateUrl = true) => {
     try {
       setLoading(true);
       setError('');
-      // Remove the # symbol if present
-      const tag = hashtag.startsWith('#') ? hashtag.substring(1) : hashtag;
       
-      // Get posts filtered by hashtag
-      const hashtagPosts = await postService.getPosts({ hashtag: tag });
+      // Get posts filtered by hashtag (keep the # if it exists)
+      const hashtagPosts = await postService.getPosts({ 
+        hashtag: hashtag
+      });
       setPosts(hashtagPosts);
+      setActiveHashtag(hashtag.replace(/^#/, '')); // Remove # for display
+
+      // URL'i güncelle
+      if (updateUrl) {
+        const cleanHashtag = hashtag.replace(/^#/, '');
+        navigate(`/?hashtag=${encodeURIComponent(cleanHashtag)}`);
+      }
     } catch (error) {
       console.error('Error fetching hashtag posts:', error);
       setError('Hashtag ile ilgili gönderiler yüklenirken bir hata oluştu.');
@@ -55,6 +72,7 @@ const Home = () => {
   const fetchPosts = async () => {
     try {
       setLoading(true);
+      setError('');
       const data = await postService.getFeedPosts();
       const postsWithAuthors = await Promise.all(
         data.map(async post => {
@@ -97,6 +115,12 @@ const Home = () => {
         })
       );
       setPosts(postsWithAuthors.filter(Boolean));
+      setActiveHashtag(null);
+      
+      // Ana sayfaya dönüldüğünde URL'i temizle
+      if (location.search) {
+        navigate('/', { replace: true });
+      }
     } catch (error) {
       setError('Gönderiler yüklenirken bir hata oluştu.');
     } finally {
@@ -212,6 +236,18 @@ const Home = () => {
   return (
     <div className="home-page">
       <div className="feed-container">
+        {activeHashtag && (
+          <div className="hashtag-header">
+            <h2>
+              <FaHashtag className="hashtag-icon" />
+              {activeHashtag}
+            </h2>
+            <button className="back-to-feed" onClick={fetchPosts}>
+              Ana Feed'e Dön
+            </button>
+          </div>
+        )}
+
         <div className="new-post-container">
           <NewPost onPostCreated={handlePostCreated} />
         </div>

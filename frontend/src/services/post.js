@@ -16,11 +16,16 @@ export const createPost = async (userId, { content, image, hashtags = [] }) => {
     const userDoc = await getDoc(doc(db, 'users', userId));
     const userData = userDoc.data();
 
+    // Ensure hashtags start with #
+    const formattedHashtags = hashtags.map(tag => 
+      tag.startsWith('#') ? tag : `#${tag}`
+    );
+
     const postData = {
       userId,
       content,
       imageUrl,
-      hashtags,
+      hashtags: formattedHashtags,
       createdAt: serverTimestamp(),
       likes_count: 0,
       comments_count: 0
@@ -345,9 +350,13 @@ export const getPosts = async (filters = {}) => {
     let postsQuery = collection(db, 'posts');
     
     if (filters.hashtag) {
+      // Ensure hashtag starts with #
+      const searchHashtag = filters.hashtag.startsWith('#') ? 
+        filters.hashtag : `#${filters.hashtag}`;
+      
       postsQuery = query(
         postsQuery,
-        where('hashtags', 'array-contains', filters.hashtag),
+        where('hashtags', 'array-contains', searchHashtag),
         orderBy('createdAt', 'desc')
       );
     } else {
@@ -358,13 +367,13 @@ export const getPosts = async (filters = {}) => {
     
     // Get posts with user data
     const postsWithUserData = await Promise.all(
-      snapshot.docs.map(async (doc) => {
-        const postData = doc.data();
+      snapshot.docs.map(async (docSnapshot) => {
+        const postData = docSnapshot.data();
         const userDoc = await getDoc(doc(db, 'users', postData.userId));
         const userData = userDoc.data();
         
         return {
-          id: doc.id,
+          id: docSnapshot.id,
           ...postData,
           user: {
             id: postData.userId,

@@ -385,4 +385,43 @@
   .post-text {
     font-size: 14px;
   }
+}
+
+.hashtag-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  padding: 16px;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.hashtag-header h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: #0073b1;
+  font-size: 20px;
+}
+
+.hashtag-header .hashtag-icon {
+  font-size: 18px;
+}
+
+.back-to-feed {
+  padding: 8px 16px;
+  background-color: #0073b1;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.back-to-feed:hover {
+  background-color: #005b8e;
 } 
