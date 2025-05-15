@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="100" height="24" viewBox="0 0 100 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Text "Linked" -->
+  <text x="0" y="18" font-family="Arial" font-weight="bold" font-size="20" fill="#0A66C2">Linked</text>
+  
+  <!-- Text "Out" -->
+  <text x="52" y="18" font-family="Arial" font-weight="bold" font-size="20" fill="#FF0000">Out</text>
+  
+  <!-- Decorative line -->
+  <line x1="48" y1="4" x2="48" y2="20" stroke="#0A66C2" stroke-width="2"/>
+</svg> 

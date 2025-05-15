@@ -13,7 +13,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyDgpVm6VtXMjN_n1ZwuGJTL79w8AapKFmQ",
   authDomain: "linkedincopy-3423b.firebaseapp.com",
   projectId: "linkedincopy-3423b",
-  storageBucket: "linkedincopy-3423b.appspot.com",
+  storageBucket: "linkedincopy-3423b.firebasestorage.app",
   messagingSenderId: "607139497223",
   appId: "1:607139497223:web:653cb9474dd9c68df3f1a2",
   measurementId: "G-1FZELZ39F4"

@@ -6,20 +6,29 @@ import { getAuth } from 'firebase/auth';
 // Helper function to handle file uploads safely
 const uploadFileToStorage = async (file, path, metadata = {}) => {
   try {
-    // Ensure contentType is set
+    // Simplify the metadata to avoid potential issues
     const fileMetadata = {
-      ...metadata,
       contentType: file.type || 'application/octet-stream',
     };
 
+    // Create a storage reference
     const storageRef = ref(storage, path);
+    
+    console.log(`Attempting to upload file to ${path}`);
+    
+    // Upload the file with minimal metadata
     const snapshot = await uploadBytes(storageRef, file, fileMetadata);
+    console.log('Upload completed successfully');
     
     // Get the download URL
     const downloadURL = await getDownloadURL(snapshot.ref);
+    console.log('Download URL obtained:', downloadURL);
     return downloadURL;
   } catch (error) {
     console.error(`Error uploading file to ${path}:`, error);
+    if (error.serverResponse) {
+      console.error('Server response:', error.serverResponse);
+    }
     throw error;
   }
 };
@@ -73,22 +82,19 @@ export const uploadProfileImage = async (file) => {
   if (!user) throw new Error('No user logged in');
 
   try {
-    // Create unique file name to avoid storage conflicts
+    console.log('Starting profile image upload for user:', user.uid);
+    
+    // Create unique file name with timestamp
+    const timestamp = Date.now();
     const fileExtension = file.name.split('.').pop();
-    const uniqueFileName = `profile_${Date.now()}.${fileExtension}`;
+    const fileName = `profile_${timestamp}.${fileExtension}`;
     
-    const filePath = `profile_images/${user.uid}/${uniqueFileName}`;
+    // Create a simpler path structure
+    const filePath = `users/${user.uid}/profile/${fileName}`;
     
-    // Create file metadata
-    const metadata = {
-      customMetadata: {
-        'firebaseStorageDownloadTokens': Date.now().toString() // Add custom token for CORS
-      }
-    };
-
-    // Upload the file and get download URL
-    const downloadURL = await uploadFileToStorage(file, filePath, metadata);
-
+    // Upload the file with minimal configuration
+    const downloadURL = await uploadFileToStorage(file, filePath);
+    
     // Update user profile in Firestore
     const userRef = doc(db, 'users', user.uid);
     await updateDoc(userRef, {
@@ -109,22 +115,19 @@ export const uploadCoverImage = async (file) => {
   if (!user) throw new Error('No user logged in');
 
   try {
-    // Create unique file name to avoid storage conflicts
+    console.log('Starting cover image upload for user:', user.uid);
+    
+    // Create unique file name with timestamp
+    const timestamp = Date.now();
     const fileExtension = file.name.split('.').pop();
-    const uniqueFileName = `cover_${Date.now()}.${fileExtension}`;
+    const fileName = `cover_${timestamp}.${fileExtension}`;
     
-    const filePath = `cover_images/${user.uid}/${uniqueFileName}`;
+    // Create a simpler path structure
+    const filePath = `users/${user.uid}/cover/${fileName}`;
     
-    // Create file metadata
-    const metadata = {
-      customMetadata: {
-        'firebaseStorageDownloadTokens': Date.now().toString() // Add custom token for CORS
-      }
-    };
-
-    // Upload the file and get download URL
-    const downloadURL = await uploadFileToStorage(file, filePath, metadata);
-
+    // Upload the file with minimal configuration
+    const downloadURL = await uploadFileToStorage(file, filePath);
+    
     // Update user profile in Firestore
     const userRef = doc(db, 'users', user.uid);
     await updateDoc(userRef, {
