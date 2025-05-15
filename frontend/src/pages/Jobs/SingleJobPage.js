@@ -291,6 +291,10 @@ const SingleJobPage = () => {
           <div className="job-section">
             <h3>İş Tanımı</h3>
             <div className="job-description">
+              <h3>Salary Range</h3>
+              <p>{job.salaryRange}</p>
+              
+              <h3>Job Description</h3>
               {job.description.split('\n').map((paragraph, index) => (
                 paragraph.trim() ? <p key={index}>{paragraph}</p> : <br key={index} />
               ))}
@@ -373,7 +377,7 @@ const SingleJobPage = () => {
                     value={applicationData.coverLetter}
                     onChange={handleInputChange}
                     rows="6"
-                    placeholder="Kendinizi tanıtın ve neden bu pozisyon için uygun olduğunuzu açıklayın..."
+                    placeholder="Introduce yourself and explain why you're a good fit for this position..."
                     required
                     disabled={submitting}
                   ></textarea>
@@ -387,7 +391,7 @@ const SingleJobPage = () => {
                     name="resumeUrl"
                     value={applicationData.resumeUrl}
                     onChange={handleInputChange}
-                    placeholder="CV'nizin online olarak erişilebilir URL'si"
+                    placeholder="URL to your online resume"
                     disabled={submitting}
                   />
                   <small>Dosya yükleme sistemi henüz aktif değil. CV'nizi online bir kaynağa yükleyip link paylaşabilirsiniz.</small>

@@ -143,15 +143,6 @@ const Login = () => {
         </button>
       </form>
 
-      <div className="auth-divider">
-        <span>or</span>
-      </div>
-
-      <button className="auth-social-button google">
-        <span className="social-icon">G</span>
-        <span>Sign in with Google</span>
-      </button>
-
       <p className="auth-footer">
         New to LinkedOut? <Link to="/auth/register">Join now</Link>
       </p>

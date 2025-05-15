@@ -3,6 +3,27 @@ import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { getAuth } from 'firebase/auth';
 
+// Helper function to handle file uploads safely
+const uploadFileToStorage = async (file, path, metadata = {}) => {
+  try {
+    // Ensure contentType is set
+    const fileMetadata = {
+      ...metadata,
+      contentType: file.type || 'application/octet-stream',
+    };
+
+    const storageRef = ref(storage, path);
+    const snapshot = await uploadBytes(storageRef, file, fileMetadata);
+    
+    // Get the download URL
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return downloadURL;
+  } catch (error) {
+    console.error(`Error uploading file to ${path}:`, error);
+    throw error;
+  }
+};
+
 // Get current user profile
 export const getCurrentUserProfile = async () => {
   const auth = getAuth();
@@ -51,16 +72,34 @@ export const uploadProfileImage = async (file) => {
   const user = auth.currentUser;
   if (!user) throw new Error('No user logged in');
 
-  const storageRef = ref(storage, `profile_images/${user.uid}/${file.name}`);
-  const snapshot = await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(snapshot.ref);
+  try {
+    // Create unique file name to avoid storage conflicts
+    const fileExtension = file.name.split('.').pop();
+    const uniqueFileName = `profile_${Date.now()}.${fileExtension}`;
+    
+    const filePath = `profile_images/${user.uid}/${uniqueFileName}`;
+    
+    // Create file metadata
+    const metadata = {
+      customMetadata: {
+        'firebaseStorageDownloadTokens': Date.now().toString() // Add custom token for CORS
+      }
+    };
 
-  const userRef = doc(db, 'users', user.uid);
-  await updateDoc(userRef, {
-    'profile.profile_image': downloadURL
-  });
+    // Upload the file and get download URL
+    const downloadURL = await uploadFileToStorage(file, filePath, metadata);
 
-  return downloadURL;
+    // Update user profile in Firestore
+    const userRef = doc(db, 'users', user.uid);
+    await updateDoc(userRef, {
+      'profile.profile_image': downloadURL
+    });
+
+    return downloadURL;
+  } catch (error) {
+    console.error("Error uploading profile image:", error);
+    throw error;
+  }
 };
 
 // Upload cover image
@@ -69,16 +108,34 @@ export const uploadCoverImage = async (file) => {
   const user = auth.currentUser;
   if (!user) throw new Error('No user logged in');
 
-  const storageRef = ref(storage, `cover_images/${user.uid}/${file.name}`);
-  const snapshot = await uploadBytes(storageRef, file);
-  const downloadURL = await getDownloadURL(snapshot.ref);
+  try {
+    // Create unique file name to avoid storage conflicts
+    const fileExtension = file.name.split('.').pop();
+    const uniqueFileName = `cover_${Date.now()}.${fileExtension}`;
+    
+    const filePath = `cover_images/${user.uid}/${uniqueFileName}`;
+    
+    // Create file metadata
+    const metadata = {
+      customMetadata: {
+        'firebaseStorageDownloadTokens': Date.now().toString() // Add custom token for CORS
+      }
+    };
 
-  const userRef = doc(db, 'users', user.uid);
-  await updateDoc(userRef, {
-    'profile.cover_image': downloadURL
-  });
+    // Upload the file and get download URL
+    const downloadURL = await uploadFileToStorage(file, filePath, metadata);
 
-  return downloadURL;
+    // Update user profile in Firestore
+    const userRef = doc(db, 'users', user.uid);
+    await updateDoc(userRef, {
+      'profile.cover_image': downloadURL
+    });
+
+    return downloadURL;
+  } catch (error) {
+    console.error("Error uploading cover image:", error);
+    throw error;
+  }
 };
 
 // Add activity

@@ -276,4 +276,4 @@ const Applications = () => {
   );
 };
 
-export default Applications;
+export default Applications; 

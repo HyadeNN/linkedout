@@ -115,7 +115,7 @@ const Header = () => {
             <input
               type="text"
               className="nav-search-input"
-              placeholder="Gönderi veya hashtag ara..."
+              placeholder="Search posts or hashtags..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -164,7 +164,7 @@ const Header = () => {
                     setSearchTerm('');
                   }}
                 >
-                  <span>Tüm sonuçları görüntüle ({searchResults.length})</span>
+                  <span>View all results ({searchResults.length})</span>
                 </div>
               )}
             </div>

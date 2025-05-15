@@ -51,7 +51,7 @@ const UserProfile = () => {
         const userSnap = await getDoc(userRef);
         
         if (!userSnap.exists()) {
-          setError('Kullanıcı bulunamadı');
+          setError('User not found');
           setLoading(false);
           return;
         }
@@ -122,7 +122,7 @@ const UserProfile = () => {
         }
       } catch (err) {
         console.error("Error fetching user data:", err);
-        setError('Profil yüklenirken bir hata oluştu');
+        setError('An error occurred while loading profile');
       } finally {
         setLoading(false);
       }
@@ -163,7 +163,8 @@ const UserProfile = () => {
           
           setPosts(userPosts);
         } catch (error) {
-          console.error('Gönderiler yüklenirken hata oluştu:', error);
+          console.error('Error loading posts:', error);
+          setError('An error occurred while loading posts');
         } finally {
           setPostsLoading(false);
         }
@@ -176,7 +177,7 @@ const UserProfile = () => {
   // Handle connect/disconnect
   const handleConnectionAction = async () => {
     if (!currentUser) {
-      alert('Bu işlemi gerçekleştirmek için giriş yapmalısınız.');
+      alert('Please log in to perform this action');
       return;
     }
     
@@ -249,7 +250,7 @@ const UserProfile = () => {
   // Handle accept/reject connection request
   const handleConnectionResponse = async (accept) => {
     if (!currentUser) {
-      alert('Bu işlemi gerçekleştirmek için giriş yapmalısınız.');
+      alert('Please log in to perform this action');
       return;
     }
     
@@ -411,7 +412,7 @@ const UserProfile = () => {
               className={`profile-tab ${selectedTab === 'posts' ? 'active' : ''}`}
               onClick={() => handleTabChange('posts')}
             >
-              Gönderiler
+              Posts
             </button>
             <button 
               className={`profile-tab ${selectedTab === 'activity' ? 'active' : ''}`}
@@ -441,7 +442,7 @@ const UserProfile = () => {
                 showUser={false}
               />
               {!postsLoading && posts.length === 0 && (
-                <div className="empty-section">Henüz gönderi paylaşılmamış</div>
+                <div className="empty-section">No posts shared yet</div>
               )}
             </div>
           </div>

@@ -63,7 +63,7 @@ const Home = () => {
       }
     } catch (error) {
       console.error('Error fetching hashtag posts:', error);
-      setError('Hashtag ile ilgili gönderiler yüklenirken bir hata oluştu.');
+      setError('An error occurred while loading posts with this hashtag.');
     } finally {
       setLoading(false);
     }
@@ -122,7 +122,7 @@ const Home = () => {
         navigate('/', { replace: true });
       }
     } catch (error) {
-      setError('Gönderiler yüklenirken bir hata oluştu.');
+      setError('An error occurred while loading posts.');
     } finally {
       setLoading(false);
     }
@@ -159,7 +159,7 @@ const Home = () => {
     } catch (error) {
       setCommentErrors(prev => ({
         ...prev,
-        [postId]: 'Yorum eklenirken bir hata oluştu.'
+        [postId]: 'An error occurred while adding the comment.'
       }));
     }
   };
@@ -180,7 +180,7 @@ const Home = () => {
         )
       );
     } catch (error) {
-      setError('Yorum silinirken bir hata oluştu.');
+      setError('An error occurred while deleting the comment.');
     }
   };
 
@@ -191,7 +191,7 @@ const Home = () => {
 
   const handleLikeToggle = async (postId) => {
     if (!user) {
-      alert('Beğenmek için giriş yapmalısınız');
+      alert('Please log in to like posts');
       return;
     }
 
@@ -214,7 +214,7 @@ const Home = () => {
       }
     } catch (error) {
       console.error('Beğeni işlemi başarısız oldu:', error);
-      alert('Beğeni işlemi başarısız oldu. Lütfen tekrar deneyin.');
+      alert('An error occurred while toggling the like.');
     }
   };
 
@@ -226,11 +226,22 @@ const Home = () => {
   };
 
   if (loading) {
-    return <div className="loading">Gönderiler yükleniyor...</div>;
+    return <div className="loading">Loading posts...</div>;
   }
 
   if (error) {
     return <div className="error-message">{error}</div>;
+  }
+
+  if (posts.length === 0) {
+    return (
+      <div className="empty-state">
+        <p>No posts yet.</p>
+        <button onClick={handlePostCreated}>
+          Create the first post
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -243,7 +254,7 @@ const Home = () => {
               {activeHashtag}
             </h2>
             <button className="back-to-feed" onClick={fetchPosts}>
-              Ana Feed'e Dön
+              Back to Feed
             </button>
           </div>
         )}
@@ -252,123 +263,114 @@ const Home = () => {
           <NewPost onPostCreated={handlePostCreated} />
         </div>
 
-        {posts.length === 0 ? (
-          <div className="no-posts">
-            <p>Henüz hiç gönderi yok.</p>
-            <Link to="/profile" className="create-post-link">
-              İlk gönderiyi paylaş
-            </Link>
-          </div>
-        ) : (
-          posts.map(post => {
-            const createdAtDate = getValidDate(post.createdAt);
-            return (
-              <div key={post.id} className="post-card">
-                <div className="post-header">
-                  <Link to={`/users/${post.userId}`} className="post-author">
-                    <img
-                      src={post.user?.profile?.profile_image || '/default-avatar.jpg'}
-                      alt={post.user?.name || 'Kullanıcı'}
-                      className="author-avatar"
-                    />
-                    <div className="author-info">
-                      <span className="author-name">{post.user?.name || 'Kullanıcı'}</span>
-                      <span className="author-headline">{post.user?.profile?.headline || ''}</span>
-                      <span className="post-date">
-                        {createdAtDate ? formatDistanceToNow(createdAtDate, { addSuffix: true }) : ''}
-                      </span>
-                    </div>
-                  </Link>
-                </div>
-
-                <div className="post-content">
-                  <p className="post-text">{post.content}</p>
-                  
-                  {post.hashtags && post.hashtags.length > 0 && (
-                    <div className="post-hashtags">
-                      {post.hashtags.map((hashtag, index) => (
-                        <button
-                          key={index}
-                          className="hashtag-button"
-                          onClick={() => handleHashtagClick(hashtag)}
-                        >
-                          <FaHashtag className="hashtag-icon" />
-                          {hashtag.replace(/^#/, '')}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {post.imageUrl && (
-                    <div className="post-image-container">
-                      <img src={post.imageUrl} alt="Post" className="post-image" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="post-stats">
-                  {likeCounts[post.id] > 0 && (
-                    <div className="likes-count">
-                      <FaThumbsUp className="like-icon" style={{ color: '#0073b1' }} />
-                      <span>{likeCounts[post.id]} beğeni</span>
-                    </div>
-                  )}
-                  
-                  {post.comments_count > 0 && (
-                    <button 
-                      className="comments-count-btn"
-                      onClick={() => toggleCommentSection(post.id)}
-                    >
-                      <FaComment className="comment-icon" />
-                      <span>{post.comments_count} yorum</span>
-                    </button>
-                  )}
-                </div>
-
-                <div className="post-actions">
-                  <button
-                    className={`action-btn ${likedPosts[post.id] ? 'liked' : ''}`}
-                    onClick={() => handleLikeToggle(post.id)}
-                  >
-                    {likedPosts[post.id] ? (
-                      <FaThumbsUp className="action-icon" />
-                    ) : (
-                      <FaRegThumbsUp className="action-icon" />
-                    )}
-                    <span>Beğen</span>
-                  </button>
-
-                  <button 
-                    className="action-btn"
-                    onClick={() => toggleCommentSection(post.id)}
-                  >
-                    <FaComment className="action-icon" />
-                    <span>Yorum Yap</span>
-                  </button>
-
-                  <button
-                    className="action-btn"
-                    onClick={() => {
-                      navigator.clipboard.writeText(window.location.href);
-                      alert('Gönderi bağlantısı panoya kopyalandı!');
-                    }}
-                  >
-                    <FaShare className="action-icon" />
-                    <span>Paylaş</span>
-                  </button>
-                </div>
-
-                {visibleCommentSections[post.id] && (
-                  <CommentSection
-                    postId={post.id}
-                    onCommentAdded={fetchPosts}
-                    onCommentDeleted={fetchPosts}
+        {posts.map(post => {
+          const createdAtDate = getValidDate(post.createdAt);
+          return (
+            <div key={post.id} className="post-card">
+              <div className="post-header">
+                <Link to={`/users/${post.userId}`} className="post-author">
+                  <img
+                    src={post.user?.profile?.profile_image || '/default-avatar.jpg'}
+                    alt={post.user?.name || 'User'}
+                    className="author-avatar"
                   />
+                  <div className="author-info">
+                    <span className="author-name">{post.user?.name || 'User'}</span>
+                    <span className="author-headline">{post.user?.profile?.headline || ''}</span>
+                    <span className="post-date">
+                      {createdAtDate ? formatDistanceToNow(createdAtDate, { addSuffix: true }) : ''}
+                    </span>
+                  </div>
+                </Link>
+              </div>
+
+              <div className="post-content">
+                <p className="post-text">{post.content}</p>
+                
+                {post.hashtags && post.hashtags.length > 0 && (
+                  <div className="post-hashtags">
+                    {post.hashtags.map((hashtag, index) => (
+                      <button
+                        key={index}
+                        className="hashtag-button"
+                        onClick={() => handleHashtagClick(hashtag)}
+                      >
+                        <FaHashtag className="hashtag-icon" />
+                        {hashtag.replace(/^#/, '')}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {post.imageUrl && (
+                  <div className="post-image-container">
+                    <img src={post.imageUrl} alt="Post" className="post-image" />
+                  </div>
                 )}
               </div>
-            );
-          })
-        )}
+
+              <div className="post-stats">
+                {likeCounts[post.id] > 0 && (
+                  <div className="likes-count">
+                    <FaThumbsUp className="like-icon" style={{ color: '#0073b1' }} />
+                    <span>{likeCounts[post.id]} likes</span>
+                  </div>
+                )}
+                
+                {post.comments_count > 0 && (
+                  <button 
+                    className="comments-count-btn"
+                    onClick={() => toggleCommentSection(post.id)}
+                  >
+                    <FaComment className="comment-icon" />
+                    <span>{post.comments_count} comments</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="post-actions">
+                <button
+                  className={`action-btn ${likedPosts[post.id] ? 'liked' : ''}`}
+                  onClick={() => handleLikeToggle(post.id)}
+                >
+                  {likedPosts[post.id] ? (
+                    <FaThumbsUp className="action-icon" />
+                  ) : (
+                    <FaRegThumbsUp className="action-icon" />
+                  )}
+                  <span>Like</span>
+                </button>
+
+                <button 
+                  className="action-btn"
+                  onClick={() => toggleCommentSection(post.id)}
+                >
+                  <FaComment className="action-icon" />
+                  <span>Comment</span>
+                </button>
+
+                <button
+                  className="action-btn"
+                  onClick={() => {
+                    navigator.clipboard.writeText(window.location.href);
+                    alert('Post link copied to clipboard!');
+                  }}
+                >
+                  <FaShare className="action-icon" />
+                  <span>Share</span>
+                </button>
+              </div>
+
+              {visibleCommentSections[post.id] && (
+                <CommentSection
+                  postId={post.id}
+                  onCommentAdded={fetchPosts}
+                  onCommentDeleted={fetchPosts}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

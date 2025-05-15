@@ -49,6 +49,7 @@ const Profile = () => {
   const [editingProject, setEditingProject] = useState(null);
   const [editingPost, setEditingPost] = useState(null);
   const [editingArticle, setEditingArticle] = useState(null);
+  const [newHashtag, setNewHashtag] = useState('');
 
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -1053,37 +1054,19 @@ const Profile = () => {
                           <div className="hashtag-add-container">
                             <input
                               type="text"
-                              placeholder="Yeni hashtag ekle (# işareti ile başlayarak)"
-                              value={postForm.newHashtag || ''}
-                              onChange={e => setPostForm(prev => ({ ...prev, newHashtag: e.target.value }))}
-                              onKeyDown={e => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  if (postForm.newHashtag && postForm.newHashtag.trim()) {
-                                    const tag = postForm.newHashtag.trim().startsWith('#') 
-                                      ? postForm.newHashtag.trim() 
-                                      : `#${postForm.newHashtag.trim()}`;
-                                    
-                                    if (!postForm.hashtags.includes(tag)) {
-                                      setPostForm(prev => ({
-                                        ...prev,
-                                        hashtags: [...prev.hashtags, tag],
-                                        newHashtag: ''
-                                      }));
-                                    }
-                                  }
-                                }
-                              }}
+                              value={newHashtag}
+                              onChange={(e) => setNewHashtag(e.target.value)}
+                              placeholder="Add new hashtag (start with #)"
                               className="hashtag-input"
                             />
                             <button 
                               type="button" 
                               className="add-hashtag-btn"
                               onClick={() => {
-                                if (postForm.newHashtag && postForm.newHashtag.trim()) {
-                                  const tag = postForm.newHashtag.trim().startsWith('#') 
-                                    ? postForm.newHashtag.trim() 
-                                    : `#${postForm.newHashtag.trim()}`;
+                                if (newHashtag && newHashtag.trim()) {
+                                  const tag = newHashtag.trim().startsWith('#') 
+                                    ? newHashtag.trim() 
+                                    : `#${newHashtag.trim()}`;
                                   
                                   if (!postForm.hashtags.includes(tag)) {
                                     setPostForm(prev => ({

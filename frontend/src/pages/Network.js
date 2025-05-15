@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { connectionService, pageService, hashtagService, teammateService, teamService } from '../services';
+import { connectionService, teammateService, teamService } from '../services';
 import { useAuth } from '../contexts/AuthContext';
-import { FaLink, FaBell, FaUsers, FaLayerGroup, FaHashtag } from 'react-icons/fa';
+import { FaLink, FaBell, FaUsers } from 'react-icons/fa';
 import './Network.css';
 import { collection, query, getDocs, where, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
 import { db, auth } from '../firebase';
@@ -21,12 +21,6 @@ const Network = () => {
   const [requestsCount, setRequestsCount] = useState(0);
   const [actionLoading, setActionLoading] = useState(false);
   const { user } = useAuth();
-  const [pages, setPages] = useState([]);
-  const [followedPages, setFollowedPages] = useState([]);
-  const [newPageName, setNewPageName] = useState('');
-  const [hashtags, setHashtags] = useState([]);
-  const [followedHashtags, setFollowedHashtags] = useState([]);
-  const [newHashtag, setNewHashtag] = useState('');
   const [teammates, setTeammates] = useState([]);
   const [teammateInvites, setTeammateInvites] = useState([]);
   const [inviteUserId, setInviteUserId] = useState('');
@@ -185,22 +179,6 @@ const Network = () => {
 
     fetchSuggestions();
   }, []);
-
-  // Pages
-  useEffect(() => {
-    if (selectedTab === 'pages') {
-      pageService.getUserPages().then(setPages);
-      pageService.getFollowedPages().then(setFollowedPages);
-    }
-  }, [selectedTab]);
-
-  // Hashtags
-  useEffect(() => {
-    if (selectedTab === 'hashtags') {
-      hashtagService.getHashtags().then(setHashtags);
-      hashtagService.getFollowedHashtags().then(setFollowedHashtags);
-    }
-  }, [selectedTab]);
 
   // Teammates
   useEffect(() => {
@@ -382,49 +360,6 @@ const Network = () => {
     setSelectedTab(tab);
   };
 
-  // Pages
-  const handleCreatePage = async () => {
-    if (!newPageName) return;
-    try {
-      await pageService.createPage({ name: newPageName });
-      setNewPageName('');
-      // Refresh pages list
-      const userPages = await pageService.getUserPages();
-      setPages(userPages);
-    } catch (error) {
-      console.error('Error creating page:', error);
-      alert('Failed to create page. Please try again.');
-    }
-  };
-
-  const handleFollowPage = async (pageId) => {
-    await pageService.followPage(pageId);
-    setFollowedPages(await pageService.getFollowedPages());
-  };
-
-  const handleUnfollowPage = async (userPageId) => {
-    await pageService.unfollowPage(userPageId);
-    setFollowedPages(await pageService.getFollowedPages());
-  };
-
-  // Hashtags
-  const handleCreateHashtag = async () => {
-    if (!newHashtag) return;
-    await hashtagService.createHashtag({ name: newHashtag });
-    setNewHashtag('');
-    setHashtags(await hashtagService.getHashtags());
-  };
-
-  const handleFollowHashtag = async (hashtagId) => {
-    await hashtagService.followHashtag(hashtagId);
-    setFollowedHashtags(await hashtagService.getFollowedHashtags());
-  };
-
-  const handleUnfollowHashtag = async (userHashtagId) => {
-    await hashtagService.unfollowHashtag(userHashtagId);
-    setFollowedHashtags(await hashtagService.getFollowedHashtags());
-  };
-
   // Teammates
   const handleSendTeammateInvite = async () => {
     if (!inviteUserId) return;
@@ -596,10 +531,10 @@ const Network = () => {
         >
           <FaUsers size={48} style={{ color: '#9e9e9e', marginBottom: '16px' }} />
           <Typography variant="h6" color="text.secondary" gutterBottom>
-            Henüz Hiç Takımınız Yok
+            You Don't Have Any Teams Yet
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Yeni bir takım oluşturarak veya mevcut bir takıma katılarak başlayabilirsiniz.
+            Get started by creating a new team or joining an existing one.
           </Typography>
         </Box>
       );
@@ -626,7 +561,7 @@ const Network = () => {
             }
           }}
         >
-          Takımlarınız
+          Your Teams
         </Typography>
 
         {teams.map((team) => (
@@ -700,7 +635,7 @@ const Network = () => {
                             fontStyle: 'italic'
                           }}
                         >
-                          {member.headline || 'Takım Üyesi'}
+                          {member.headline || 'Team Member'}
                         </Typography>
                         <Box 
                           sx={{ 
@@ -717,7 +652,7 @@ const Network = () => {
                           }}
                         >
                           <FaUsers style={{ marginRight: '8px' }} />
-                          {member.role === 'admin' ? 'Takım Lideri' : 'Takım Üyesi'}
+                          {member.role === 'admin' ? 'Team Leader' : 'Team Member'}
                         </Box>
                       </Box>
                     </CardContent>
@@ -740,7 +675,7 @@ const Network = () => {
                           textTransform: 'none'
                         }}
                       >
-                        Profili Görüntüle
+                        View Profile
                       </Button>
                     </Box>
                   </Card>
@@ -937,136 +872,6 @@ const Network = () => {
           </Box>
         );
 
-      case 'pages':
-        return (
-          <Box>
-            <Typography variant="h5" gutterBottom>
-              Your Pages
-            </Typography>
-            {loading ? (
-              <CircularProgress />
-            ) : (
-              <Grid container spacing={3}>
-                {pages.map((page) => (
-                  <Grid item xs={12} sm={6} md={4} key={page.id}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6">{page.name}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {page.followerCount} followers
-                        </Typography>
-                        <Button
-                          variant="outlined"
-                          color="primary"
-                          fullWidth
-                          sx={{ mt: 2 }}
-                          onClick={() => handleUnfollowPage(page.id)}
-                        >
-                          Unfollow
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-
-            <Box mt={4}>
-              <Typography variant="h5" gutterBottom>
-                Suggested Pages
-              </Typography>
-              <Grid container spacing={3}>
-                {pages.map((page) => (
-                  <Grid item xs={12} sm={6} md={4} key={page.id}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6">{page.name}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {page.followerCount} followers
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          fullWidth
-                          sx={{ mt: 2 }}
-                          onClick={() => handleFollowPage(page.id)}
-                        >
-                          Follow
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
-          </Box>
-        );
-
-      case 'hashtags':
-        return (
-          <Box>
-            <Typography variant="h5" gutterBottom>
-              Your Hashtags
-            </Typography>
-            {followedHashtags.length > 0 ? (
-              <Grid container spacing={3}>
-                {followedHashtags.map((hashtag) => (
-                  <Grid item xs={12} sm={6} md={4} key={hashtag.id}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6">#{hashtag.name}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {hashtag.posts} posts
-                        </Typography>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          fullWidth
-                          sx={{ mt: 2 }}
-                          onClick={() => handleUnfollowHashtag(hashtag.id)}
-                        >
-                          Unfollow
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <Typography color="textSecondary">You don't follow any hashtags yet</Typography>
-            )}
-
-            <Box mt={4}>
-              <Typography variant="h5" gutterBottom>
-                Trending Hashtags
-              </Typography>
-              <Grid container spacing={3}>
-                {hashtags.map((hashtag) => (
-                  <Grid item xs={12} sm={6} md={4} key={hashtag.id}>
-                    <Card>
-                      <CardContent>
-                        <Typography variant="h6">#{hashtag.name}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {hashtag.posts} posts
-                        </Typography>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          fullWidth
-                          sx={{ mt: 2 }}
-                          onClick={() => handleFollowHashtag(hashtag.id)}
-                        >
-                          Follow
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </Box>
-          </Box>
-        );
-
       default:
         return null;
     }
@@ -1093,18 +898,6 @@ const Network = () => {
             onClick={() => setSelectedTab('teammates')}
           >
             <FaUsers /> Teammates
-          </li>
-          <li 
-            className={selectedTab === 'pages' ? 'active' : ''} 
-            onClick={() => setSelectedTab('pages')}
-          >
-            <FaLayerGroup /> Pages <span>28</span>
-          </li>
-          <li 
-            className={selectedTab === 'hashtags' ? 'active' : ''} 
-            onClick={() => setSelectedTab('hashtags')}
-          >
-            <FaHashtag /> Hashtags <span>8</span>
           </li>
         </ul>
       </aside>

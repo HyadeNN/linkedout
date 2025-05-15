@@ -309,15 +309,6 @@ const Register = () => {
         </button>
       </form>
 
-      <div className="auth-divider">
-        <span>or</span>
-      </div>
-
-      <button className="auth-social-button google">
-        <span className="social-icon">G</span>
-        <span>Join with Google</span>
-      </button>
-
       <p className="auth-footer">
         Already on LinkedOut? <Link to="/auth/login">Sign in</Link>
       </p>

@@ -281,7 +281,7 @@ const Search = () => {
           <div className="search-header">
             <div className="search-header-top">
               <button onClick={handleBackToFeed} className="back-button">
-                <FaArrowLeft /> Ana Feed'e Dön
+                <FaArrowLeft /> Back to Feed
               </button>
               <button onClick={toggleSortDirection} className="sort-button">
                 {sortDirection === 'desc' ? <FaSortAmountDown /> : <FaSortAmountUp />}
@@ -322,12 +322,12 @@ const Search = () => {
           {loading ? (
             <div className="loading-state">
               <div className="loading-spinner"></div>
-              <p>Aranıyor...</p>
+              <p>Searching...</p>
             </div>
           ) : searchResults.length === 0 ? (
             <div className="no-results">
               <FaSearch className="no-results-icon" />
-              <h2>Sonuç bulunamadı</h2>
+              <h2>No results found. Try different keywords or check your spelling</h2>
               <p>
                 Farklı anahtar kelimeler deneyin veya yazımı kontrol edin
               </p>
@@ -343,7 +343,7 @@ const Search = () => {
 
         <div className="search-sidebar">
           <div className="sidebar-section">
-            <h3>Son Aramalar</h3>
+            <h3>Recent Searches</h3>
             <div className="recent-searches">
               <p className="no-recents">Henüz arama yapılmadı</p>
             </div>

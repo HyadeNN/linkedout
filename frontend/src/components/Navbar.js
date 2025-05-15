@@ -113,7 +113,7 @@ const Navbar = () => {
                 <input
                   type="text"
                   className="nav-search-input"
-                  placeholder="Hashtag için # kullanın veya içerik arayın"
+                  placeholder="Use # for hashtags or search content"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onFocus={() => setShowResults(true)}
