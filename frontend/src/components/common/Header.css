@@ -1,4 +1,4 @@
-/* Header Ana Yapı */
+/* Main Header Structure */
 .nav-header {
   position: fixed;
   top: 0;
@@ -13,7 +13,7 @@
   padding: 0;
 }
 
-/* Logo Bölgesi */
+/* Logo Area */
 .nav-logo-zone {
   width: 130px;
   height: 80px;
@@ -27,7 +27,7 @@
   height: 46px;
 }
 
-/* Menü */
+/* Menu */
 .nav-menu {
   display: flex;
   align-items: center;
@@ -60,7 +60,7 @@
   margin-bottom: 4px;
 }
 
-/* Arama Bölgesi */
+/* Search Area */
 .nav-search-zone {
   flex: 1;
   display: flex;
@@ -197,7 +197,7 @@
   text-overflow: ellipsis;
 }
 
-/* Profil Bölgesi */
+/* Profile Area */
 .nav-profile-zone {
   width: 420px;
   height: 80px;
@@ -274,7 +274,7 @@
   font-weight: 600;
 }
 
-/* Diğer Menü */
+/* Other Menu */
 .nav-profile-other {
   display: flex;
   flex-direction: column;

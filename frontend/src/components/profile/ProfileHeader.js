@@ -152,7 +152,7 @@ const ProfileHeader = ({ profile, onProfileImageChange, onCoverImageChange, onFi
                 </button>
                 <Link to="/profile/settings" className="settings-button">
                   <FiSettings />
-                  Hesap Ayarları
+                  Account Settings
                 </Link>
               </div>
             </>

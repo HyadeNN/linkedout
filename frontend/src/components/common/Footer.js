@@ -59,7 +59,7 @@ const Footer = () => {
         <div className="language-selector">
           <select>
             <option value="en">English</option>
-            <option value="tr">Türkçe</option>
+            <option value="tr">Turkish</option>
             <option value="es">Español</option>
             <option value="fr">Français</option>
             <option value="de">Deutsch</option>

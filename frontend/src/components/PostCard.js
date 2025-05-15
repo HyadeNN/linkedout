@@ -34,7 +34,7 @@ const PostCard = ({ post, onUpdatePost }) => {
 
   const handleLikeToggle = async () => {
     if (!user) {
-      alert('Beğenmek için giriş yapmalısınız');
+      alert('You need to login to like this post');
       return;
     }
 
@@ -64,14 +64,14 @@ const PostCard = ({ post, onUpdatePost }) => {
       }
     } catch (error) {
       console.error('Failed to toggle like:', error);
-      alert('Beğeni işlemi başarısız oldu. Lütfen tekrar deneyin.');
+      alert('Like operation failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleHashtagClick = (hashtag) => {
-    // Hashtag'e tıklandığında yapılacak işlemler
+    // Actions when a hashtag is clicked
     console.log('Hashtag clicked:', hashtag);
   };
 
@@ -81,11 +81,11 @@ const PostCard = ({ post, onUpdatePost }) => {
         <a className="post-author" href={`/users/${post.userId}`}>
           <img 
             src={post.user?.profile?.profile_image || '/default-avatar.jpg'} 
-            alt={post.user?.name || 'Kullanıcı'} 
+            alt={post.user?.name || 'User'} 
             className="author-avatar"
           />
           <div className="author-info">
-            <span className="author-name">{post.user?.name || 'Kullanıcı'}</span>
+            <span className="author-name">{post.user?.name || 'User'}</span>
             <span className="author-headline">{post.user?.headline || ''}</span>
             <span className="post-date">{new Date(post.createdAt).toLocaleString()}</span>
           </div>
@@ -121,14 +121,14 @@ const PostCard = ({ post, onUpdatePost }) => {
         {likesCount > 0 && (
           <div className="likes-count">
             <FaThumbsUp className="like-icon" style={{ color: '#0073b1' }} />
-            <span>{likesCount} beğeni</span>
+            <span>{likesCount} likes</span>
           </div>
         )}
         
         {post.comments_count > 0 && (
           <div className="comments-count">
             <FaComment className="comment-icon" />
-            <span>{post.comments_count} yorum</span>
+            <span>{post.comments_count} comments</span>
           </div>
         )}
       </div>
@@ -144,23 +144,23 @@ const PostCard = ({ post, onUpdatePost }) => {
           ) : (
             <FaRegThumbsUp className="action-icon" />
           )}
-          <span>Beğen</span>
+          <span>Like</span>
         </button>
 
         <button className="action-btn">
           <FaComment className="action-icon" />
-          <span>Yorum Yap</span>
+          <span>Comment</span>
         </button>
 
         <button
           className="action-btn"
           onClick={() => {
             navigator.clipboard.writeText(window.location.href);
-            alert('Gönderi bağlantısı panoya kopyalandı!');
+            alert('Post link copied to clipboard!');
           }}
         >
           <FaShare className="action-icon" />
-          <span>Paylaş</span>
+          <span>Share</span>
         </button>
       </div>
 

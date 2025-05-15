@@ -36,11 +36,11 @@ const Navbar = () => {
     if (!searchTerm.trim()) return;
 
     if (searchTerm.startsWith('#')) {
-      // Hashtag araması
+      // Hashtag search
       const hashtag = searchTerm.substring(1);
       window.location.href = `/?hashtag=${encodeURIComponent(hashtag)}`;
     } else {
-      // Normal arama
+      // Normal search
       window.location.href = `/search?q=${encodeURIComponent(searchTerm)}`;
     }
     setSearchResults([]);
@@ -53,7 +53,7 @@ const Navbar = () => {
       const hashtag = result.hashtags[0].replace('#', '');
       window.location.href = `/?hashtag=${encodeURIComponent(hashtag)}`;
     } else {
-      // Post detay sayfasına yönlendir
+      // Redirect to post detail page
       window.location.href = `/post/${result.id}`;
     }
     setSearchResults([]);
@@ -61,12 +61,12 @@ const Navbar = () => {
     setSearchTerm('');
   };
 
-  // URL değişikliklerini izle
+  // Watch URL changes
   useEffect(() => {
     console.log('Current location:', location.pathname + location.search);
   }, [location]);
 
-  // Arama işlemi için debounce fonksiyonu
+  // Debounce function for search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (searchTerm) {
@@ -91,7 +91,7 @@ const Navbar = () => {
     }
   };
 
-  // Debug için eklendi
+  // Added for debugging
   useEffect(() => {
     console.log("Current userData state:", userData);
   }, [userData]);

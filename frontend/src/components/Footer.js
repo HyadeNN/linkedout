@@ -21,7 +21,7 @@ const translations = {
     settings: 'Settings',
     language: 'Language',
     english: 'English',
-    turkish: 'Türkçe',
+    turkish: 'Turkish',
   },
   tr: {
     about: 'Hakkında',

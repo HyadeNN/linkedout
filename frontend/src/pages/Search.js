@@ -285,7 +285,7 @@ const Search = () => {
               </button>
               <button onClick={toggleSortDirection} className="sort-button">
                 {sortDirection === 'desc' ? <FaSortAmountDown /> : <FaSortAmountUp />}
-                <span>{sortDirection === 'desc' ? 'En Yeni' : 'En Eski'}</span>
+                <span>{sortDirection === 'desc' ? 'Newest' : 'Oldest'}</span>
               </button>
             </div>
             <div className="search-tabs">
@@ -294,27 +294,27 @@ const Search = () => {
                 onClick={() => setActiveTab('posts')}
               >
                 <FaNewspaper />
-                <span>Gönderiler</span>
+                <span>Posts</span>
               </button>
               <button
                 className={`tab-button ${activeTab === 'users' ? 'active' : ''}`}
                 onClick={() => setActiveTab('users')}
               >
                 <FaUser />
-                <span>Kullanıcılar</span>
+                <span>Users</span>
               </button>
               <button
                 className={`tab-button ${activeTab === 'hashtags' ? 'active' : ''}`}
                 onClick={() => setActiveTab('hashtags')}
               >
                 <FaHashtag />
-                <span>Hashtagler</span>
+                <span>Hashtags</span>
               </button>
             </div>
             {searchQuery && (
               <div className="search-query">
                 <FaSearch />
-                <span>"{searchQuery}" için arama sonuçları</span>
+                <span>Search results for "{searchQuery}"</span>
               </div>
             )}
           </div>
@@ -329,7 +329,7 @@ const Search = () => {
               <FaSearch className="no-results-icon" />
               <h2>No results found. Try different keywords or check your spelling</h2>
               <p>
-                Farklı anahtar kelimeler deneyin veya yazımı kontrol edin
+                Try different keywords or check your spelling
               </p>
             </div>
           ) : (
@@ -345,16 +345,16 @@ const Search = () => {
           <div className="sidebar-section">
             <h3>Recent Searches</h3>
             <div className="recent-searches">
-              <p className="no-recents">Henüz arama yapılmadı</p>
+              <p className="no-recents">No searches yet</p>
             </div>
           </div>
           <div className="sidebar-section">
-            <h3>Popüler Hashtagler</h3>
+            <h3>Popular Hashtags</h3>
             <div className="hashtags-list">
               {loadingHashtags ? (
-                <div className="sidebar-loading">Yükleniyor...</div>
+                <div className="sidebar-loading">Loading...</div>
               ) : allHashtags.length === 0 ? (
-                <p className="no-hashtags">Hashtag bulunamadı</p>
+                <p className="no-hashtags">No hashtags found</p>
               ) : (
                 allHashtags.map((hashtag) => (
                   <button

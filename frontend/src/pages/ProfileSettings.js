@@ -163,12 +163,12 @@ const ProfileSettings = () => {
     
     // Validate passwords
     if (newPassword !== confirmPassword) {
-      setPasswordError('Şifreler eşleşmiyor');
+      setPasswordError('Passwords do not match');
       return;
     }
     
     if (newPassword.length < 6) {
-      setPasswordError('Şifre en az 6 karakter olmalıdır');
+      setPasswordError('Password must be at least 6 characters');
       return;
     }
     
@@ -181,15 +181,15 @@ const ProfileSettings = () => {
       // Then update password
       await updatePassword(firebaseUser, newPassword);
       
-      setPasswordSuccess('Şifreniz başarıyla değiştirildi');
+      setPasswordSuccess('Your password has been changed successfully');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
       if (error.code === 'auth/wrong-password') {
-        setPasswordError('Mevcut şifreniz hatalı');
+        setPasswordError('Current password is incorrect');
       } else {
-        setPasswordError(`Şifre değiştirilemedi: ${error.message}`);
+        setPasswordError(`Password could not be changed: ${error.message}`);
       }
     } finally {
       setIsLoading(false);
@@ -205,13 +205,13 @@ const ProfileSettings = () => {
     // Validate email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
-      setEmailError('Geçerli bir e-posta adresi girin');
+      setEmailError('Enter a valid email address');
       return;
     }
     
     // If email is the same as current, no need to update
     if (newEmail === firebaseUser.email) {
-      setEmailError('Bu zaten mevcut e-posta adresiniz');
+      setEmailError('This is already your current email address');
       return;
     }
     
@@ -224,15 +224,15 @@ const ProfileSettings = () => {
       // Then update email
       await updateEmail(firebaseUser, newEmail);
       
-      setEmailSuccess('E-posta adresiniz başarıyla değiştirildi');
+      setEmailSuccess('Your email address has been updated successfully');
       setEmailPassword('');
     } catch (error) {
       if (error.code === 'auth/wrong-password') {
-        setEmailError('Şifreniz hatalı');
+        setEmailError('Current password is incorrect');
       } else if (error.code === 'auth/email-already-in-use') {
-        setEmailError('Bu e-posta adresi zaten kullanımda');
+        setEmailError('This email address is already in use');
       } else {
-        setEmailError(`E-posta değiştirilemedi: ${error.message}`);
+        setEmailError(`Email could not be updated: ${error.message}`);
       }
     } finally {
       setIsLoading(false);
@@ -247,12 +247,12 @@ const ProfileSettings = () => {
     
     // Validate phone number
     if (!phoneNumber.startsWith('+')) {
-      setPhoneError('Telefon numarası ülke kodu ile başlamalıdır (ör. +90)');
+      setPhoneError('Phone number must start with country code (e.g. +1)');
       return;
     }
     
     if (!recaptchaReady) {
-      setPhoneError('Lütfen önce reCAPTCHA doğrulamasını tamamlayın.');
+      setPhoneError('Please complete the reCAPTCHA verification first.');
       return;
     }
     
@@ -264,15 +264,15 @@ const ProfileSettings = () => {
       
       // Save the confirmation result for later use
       setConfirmationResult(confirmation);
-      setPhoneSuccess('Doğrulama kodu gönderildi. Lütfen telefonunuza gelen 6 haneli kodu girin.');
+      setPhoneSuccess('Verification code has been sent. Please enter the 6-digit code received on your phone.');
       setPhoneVerificationStep(2);
     } catch (error) {
       console.error('Phone verification error:', error);
       
       if (error.code === 'auth/invalid-phone-number') {
-        setPhoneError('Geçersiz telefon numarası');
+        setPhoneError('Invalid phone number');
       } else if (error.code === 'auth/captcha-check-failed') {
-        setPhoneError('reCAPTCHA doğrulaması başarısız oldu. Lütfen tekrar deneyin.');
+        setPhoneError('reCAPTCHA verification failed. Please try again.');
         
         // Reset reCAPTCHA
         try {
@@ -305,13 +305,13 @@ const ProfileSettings = () => {
           console.error('Error resetting reCAPTCHA:', e);
         }
       } else if (error.code === 'auth/quota-exceeded') {
-        setPhoneError('SMS gönderme sınırına ulaşıldı. Lütfen daha sonra tekrar deneyin.');
+        setPhoneError('SMS sending limit exceeded. Please try again later.');
       } else if (error.code === 'auth/missing-verification-id') {
-        setPhoneError('Doğrulama işlemi başlatılamadı. Lütfen sayfayı yenileyip tekrar deneyin.');
+        setPhoneError('Verification process could not be started. Please refresh and try again.');
       } else if (error.code === 'auth/invalid-verification-id') {
-        setPhoneError('Geçersiz doğrulama oturumu. Lütfen sayfayı yenileyip tekrar deneyin.');
+        setPhoneError('Invalid verification session. Please refresh and try again.');
       } else {
-        setPhoneError(`Doğrulama kodu gönderilemedi: ${error.message}`);
+        setPhoneError(`Verification code could not be sent: ${error.message}`);
       }
       
       setRecaptchaReady(false);
@@ -327,7 +327,7 @@ const ProfileSettings = () => {
     setPhoneSuccess('');
     
     if (!verificationCode || verificationCode.length !== 6) {
-      setPhoneError('Lütfen 6 haneli doğrulama kodunu girin');
+      setPhoneError('Please enter the 6-digit verification code');
       return;
     }
     
@@ -335,7 +335,7 @@ const ProfileSettings = () => {
     
     try {
       if (!confirmationResult) {
-        setPhoneError('Doğrulama oturumu geçersiz. Lütfen tekrar baştan başlayın.');
+        setPhoneError('Verification session is invalid. Please start over.');
         setPhoneVerificationStep(1);
         return;
       }
@@ -356,7 +356,7 @@ const ProfileSettings = () => {
       }
       
       // Success!
-      setPhoneSuccess('Telefon numaranız başarıyla doğrulandı ve hesabınıza bağlandı');
+      setPhoneSuccess('Your phone number has been verified and linked to your account');
       setPhoneVerificationStep(1);
       setPhoneNumber('');
       setVerificationCode('');
@@ -371,12 +371,12 @@ const ProfileSettings = () => {
       console.error('Code verification error:', error);
       
       if (error.code === 'auth/invalid-verification-code') {
-        setPhoneError('Geçersiz doğrulama kodu');
+        setPhoneError('Invalid verification code');
       } else if (error.code === 'auth/code-expired') {
-        setPhoneError('Doğrulama kodu süresi doldu. Lütfen yeni bir kod isteyin.');
+        setPhoneError('Verification code has expired. Please request a new code.');
         setPhoneVerificationStep(1);
       } else {
-        setPhoneError(`Telefon doğrulama başarısız: ${error.message}`);
+        setPhoneError(`Phone verification failed: ${error.message}`);
       }
     } finally {
       setIsLoading(false);
@@ -393,15 +393,15 @@ const ProfileSettings = () => {
       const provider = new GoogleAuthProvider();
       await linkWithPopup(firebaseUser, provider);
       
-      setProviderSuccess('Google hesabınız başarıyla bağlandı');
+      setProviderSuccess('Your Google account has been linked successfully');
       
       // Refresh providers
       setProviders(firebaseUser.providerData || []);
     } catch (error) {
       if (error.code === 'auth/credential-already-in-use') {
-        setProviderError('Bu Google hesabı zaten başka bir hesaba bağlı');
+        setProviderError('This Google account is already linked to another account');
       } else {
-        setProviderError(`Google hesabı bağlama başarısız: ${error.message}`);
+        setProviderError(`Google account linking failed: ${error.message}`);
       }
     } finally {
       setIsLoading(false);
@@ -415,7 +415,7 @@ const ProfileSettings = () => {
     
     // Don't allow unlinking if it's the only provider
     if (providers.length <= 1) {
-      setProviderError('En az bir giriş yöntemi bağlı kalmalıdır');
+      setProviderError('At least one login method must remain linked');
       return;
     }
     
@@ -424,12 +424,12 @@ const ProfileSettings = () => {
     try {
       await unlink(firebaseUser, providerId);
       
-      setProviderSuccess('Hesap bağlantısı başarıyla kaldırıldı');
+      setProviderSuccess('Account link has been successfully removed');
       
       // Refresh providers
       setProviders(firebaseUser.providerData || []);
     } catch (error) {
-      setProviderError(`Hesap bağlantısı kaldırılamadı: ${error.message}`);
+      setProviderError(`Could not unlink account: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -456,22 +456,22 @@ const ProfileSettings = () => {
   };
   
   if (!user || !firebaseUser) {
-    return <div className="loading-container">Yükleniyor...</div>;
+    return <div className="loading-container">Loading...</div>;
   }
   
   return (
     <div className="profile-settings-container">
-      <h1 className="profile-settings-title">Hesap Ayarları</h1>
+      <h1 className="profile-settings-title">Account Settings</h1>
       
       <div className="settings-section">
-        <h2 className="settings-section-title">Bağlı Hesaplar</h2>
+        <h2 className="settings-section-title">Linked Accounts</h2>
         <div className="linked-accounts">
           {/* Email Provider */}
           <div className="linked-account">
             <div className="account-info">
               <div className="account-type">
                 <i className="fas fa-envelope"></i>
-                <span>E-posta</span>
+                <span>Email</span>
               </div>
               <div className="account-detail">{firebaseUser.email}</div>
             </div>
@@ -482,7 +482,7 @@ const ProfileSettings = () => {
                   onClick={() => handleUnlinkProvider('password')}
                   disabled={isLoading}
                 >
-                  Bağlantıyı Kaldır
+                  Unlink
                 </button>
               )}
             </div>
@@ -494,10 +494,10 @@ const ProfileSettings = () => {
               <div className="account-info">
                 <div className="account-type">
                   <i className="fas fa-phone"></i>
-                  <span>Telefon</span>
+                  <span>Phone</span>
                 </div>
                 <div className="account-detail">
-                  {providers.find(p => p.providerId === 'phone')?.phoneNumber || 'Bağlı'}
+                  {providers.find(p => p.providerId === 'phone')?.phoneNumber || 'Linked'}
                 </div>
               </div>
               <div className="account-actions">
@@ -506,7 +506,7 @@ const ProfileSettings = () => {
                   onClick={() => handleUnlinkProvider('phone')}
                   disabled={isLoading}
                 >
-                  Bağlantıyı Kaldır
+                  Unlink
                 </button>
               </div>
             </div>
@@ -521,7 +521,7 @@ const ProfileSettings = () => {
                   <span>Google</span>
                 </div>
                 <div className="account-detail">
-                  {providers.find(p => p.providerId === 'google.com')?.email || 'Bağlı'}
+                  {providers.find(p => p.providerId === 'google.com')?.email || 'Linked'}
                 </div>
               </div>
               <div className="account-actions">
@@ -530,7 +530,7 @@ const ProfileSettings = () => {
                   onClick={() => handleUnlinkProvider('google.com')}
                   disabled={isLoading}
                 >
-                  Bağlantıyı Kaldır
+                  Unlink
                 </button>
               </div>
             </div>
@@ -542,7 +542,7 @@ const ProfileSettings = () => {
                 disabled={isLoading}
               >
                 <i className="fab fa-google"></i>
-                Google Hesabını Bağla
+                Link Google Account
               </button>
             </div>
           )}
@@ -554,10 +554,10 @@ const ProfileSettings = () => {
       
       {/* Email Change Section */}
       <div className="settings-section">
-        <h2 className="settings-section-title">E-posta Değiştir</h2>
+        <h2 className="settings-section-title">Change Email</h2>
         <form onSubmit={handleEmailChange} className="settings-form">
           <div className="form-group">
-            <label htmlFor="newEmail">Yeni E-posta Adresi</label>
+            <label htmlFor="newEmail">New Email Address</label>
             <input
               type="email"
               id="newEmail"
@@ -568,7 +568,7 @@ const ProfileSettings = () => {
           </div>
           
           <div className="form-group">
-            <label htmlFor="emailPassword">Mevcut Şifreniz</label>
+            <label htmlFor="emailPassword">Current Password</label>
             <input
               type="password"
               id="emailPassword"
@@ -586,17 +586,17 @@ const ProfileSettings = () => {
             className="update-button"
             disabled={isLoading}
           >
-            {isLoading ? 'İşleniyor...' : 'E-posta Adresini Güncelle'}
+            {isLoading ? 'Processing...' : 'Update Email Address'}
           </button>
         </form>
       </div>
       
       {/* Password Change Section */}
       <div className="settings-section">
-        <h2 className="settings-section-title">Şifre Değiştir</h2>
+        <h2 className="settings-section-title">Change Password</h2>
         <form onSubmit={handlePasswordChange} className="settings-form">
           <div className="form-group">
-            <label htmlFor="currentPassword">Mevcut Şifre</label>
+            <label htmlFor="currentPassword">Current Password</label>
             <input
               type="password"
               id="currentPassword"
@@ -607,7 +607,7 @@ const ProfileSettings = () => {
           </div>
           
           <div className="form-group">
-            <label htmlFor="newPassword">Yeni Şifre</label>
+            <label htmlFor="newPassword">New Password</label>
             <input
               type="password"
               id="newPassword"
@@ -619,7 +619,7 @@ const ProfileSettings = () => {
           </div>
           
           <div className="form-group">
-            <label htmlFor="confirmPassword">Yeni Şifreyi Onayla</label>
+            <label htmlFor="confirmPassword">Confirm New Password</label>
             <input
               type="password"
               id="confirmPassword"
@@ -638,69 +638,67 @@ const ProfileSettings = () => {
             className="update-button"
             disabled={isLoading}
           >
-            {isLoading ? 'İşleniyor...' : 'Şifreyi Güncelle'}
+            {isLoading ? 'Processing...' : 'Update Password'}
           </button>
         </form>
       </div>
       
       {/* Phone Verification Section */}
       <div className="settings-section">
-        <h2 className="settings-section-title">Telefon Numarası Doğrulama</h2>
+        <h2 className="settings-section-title">Phone Number Verification</h2>
         
         {!isProviderLinked('phone') ? (
           <>
             {phoneVerificationStep === 1 ? (
               <form onSubmit={handleSendPhoneVerification} className="settings-form">
                 <div className="form-group">
-                  <label htmlFor="phoneNumber">Telefon Numarası</label>
+                  <label htmlFor="phoneNumber">Phone Number</label>
                   <input
                     type="tel"
                     id="phoneNumber"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="+90XXXXXXXXXX"
+                    placeholder="+1XXXXXXXXXX"
                     required
                   />
                   <small className="input-help">
-                    Ülke kodu ile birlikte girin (örn. +905551234567)
+                    This site uses Google reCAPTCHA protection for phone verification.
+                    <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a> and
+                    <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">Terms of Service</a>.
                   </small>
                 </div>
                 
                 <div className="form-group">
-                  <label>Doğrulama</label>
+                  <label>Verification</label>
                   <div id="recaptcha-container" className="recaptcha-container"></div>
                 </div>
                 
                 {phoneError && <div className="error-message">{phoneError}</div>}
                 {phoneSuccess && <div className="success-message">{phoneSuccess}</div>}
                 
-                <p className="recaptcha-disclosure">
-                  Bu site, telefon doğrulama için Google reCAPTCHA koruması kullanmaktadır.
-                </p>
-                
                 <button
                   type="submit"
                   className="update-button"
-                  disabled={isLoading}
+                  disabled={isLoading || !recaptchaReady}
                 >
-                  {isLoading ? 'İşleniyor...' : 'Doğrulama Kodu Gönder'}
+                  {isLoading ? 'Processing...' : 'Send Verification Code'}
                 </button>
               </form>
             ) : (
               <form onSubmit={handleVerifyPhoneCode} className="settings-form">
                 <div className="form-group">
-                  <label htmlFor="verificationCode">Doğrulama Kodu</label>
+                  <label htmlFor="verificationCode">Verification Code</label>
                   <input
                     type="text"
                     id="verificationCode"
                     value={verificationCode}
                     onChange={(e) => setVerificationCode(e.target.value)}
-                    placeholder="6 haneli kod"
+                    placeholder="6-digit code"
                     maxLength={6}
                     required
                   />
                   <small className="input-help">
-                    Telefonunuza gönderilen 6 haneli kodu girin
+                    Enter the 6-digit code received on your phone
                   </small>
                 </div>
                 
@@ -714,7 +712,7 @@ const ProfileSettings = () => {
                     onClick={resetPhoneVerification}
                     disabled={isLoading}
                   >
-                    Geri
+                    Cancel
                   </button>
                   
                   <button
@@ -722,7 +720,7 @@ const ProfileSettings = () => {
                     className="update-button"
                     disabled={isLoading}
                   >
-                    {isLoading ? 'İşleniyor...' : 'Kodu Doğrula'}
+                    {isLoading ? 'Processing...' : 'Verify Code'}
                   </button>
                 </div>
               </form>
@@ -730,20 +728,21 @@ const ProfileSettings = () => {
           </>
         ) : (
           <div className="verification-complete">
-            <p>Telefon numaranız doğrulanmış ve hesabınıza bağlı.</p>
+            <p>Your phone number has been verified and linked to your account.</p>
           </div>
         )}
       </div>
       
       <div className="settings-section">
-        <h2 className="settings-section-title">Güvenlik İpuçları</h2>
+        <h2 className="settings-section-title">Security Tips</h2>
         <div className="security-tips">
+          <h3>Security Tips</h3>
           <ul>
-            <li>Hesabınızı korumak için güçlü bir şifre kullanın.</li>
-            <li>Şifrenizi düzenli olarak değiştirin.</li>
-            <li>İki faktörlü kimlik doğrulama için telefon numaranızı doğrulayın.</li>
-            <li>Güvenli girişler için Google hesabınızı bağlayın.</li>
-            <li>Şifrenizi unutursanız, hesaba erişmek için alternatif yöntemler olması önemlidir.</li>
+            <li>Use a strong password to protect your account.</li>
+            <li>Enable two-factor authentication for extra security.</li>
+            <li>Verify your phone number for two-factor authentication.</li>
+            <li>Link your Google account for secure logins.</li>
+            <li>Having alternative methods to access your account is important if you forget your password.</li>
           </ul>
         </div>
       </div>

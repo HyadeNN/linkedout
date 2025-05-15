@@ -43,7 +43,7 @@ const SingleJobPage = () => {
         
         if (!jobDoc.exists()) {
           console.log("Job not found");
-          setError("İş ilanı bulunamadı.");
+          setError("Job not found.");
           setLoading(false);
           return;
         }
@@ -86,7 +86,7 @@ const SingleJobPage = () => {
         setLoading(false);
       } catch (err) {
         console.error("Error fetching job:", err);
-        setError("İş detayları yüklenirken bir hata oluştu.");
+        setError("Error loading job details.");
         setLoading(false);
       }
     };
@@ -103,7 +103,7 @@ const SingleJobPage = () => {
     }
     
     if (!applicationData.coverLetter.trim()) {
-      alert("Lütfen bir başvuru mektubu girin.");
+      alert("Please enter a cover letter.");
       return;
     }
     
@@ -122,11 +122,11 @@ const SingleJobPage = () => {
       // Update state
       setHasApplied(true);
       setShowApplyForm(false);
-      alert("Başvurunuz başarıyla gönderildi!");
+      alert("Application submitted successfully!");
       
     } catch (err) {
       console.error("Error submitting application:", err);
-      alert("Başvuru gönderilirken bir hata oluştu. Lütfen tekrar deneyin.");
+      alert("Error submitting application. Please try again later.");
     } finally {
       setSubmitting(false);
     }
@@ -154,8 +154,8 @@ const SingleJobPage = () => {
     } catch (err) {
       console.error("Error toggling saved job:", err);
       alert(isSaved 
-        ? "İş kaydı kaldırılırken bir hata oluştu." 
-        : "İş kaydedilirken bir hata oluştu.");
+        ? "Error removing job from saved jobs." 
+        : "Error saving job.");
     } finally {
       setSavingJob(false);
     }
@@ -175,7 +175,7 @@ const SingleJobPage = () => {
       <div className="single-job-page">
         <Header />
         <div className="container">
-          <div className="loading-spinner">Yükleniyor...</div>
+          <div className="loading-spinner">Loading...</div>
         </div>
       </div>
     );
@@ -186,8 +186,8 @@ const SingleJobPage = () => {
       <div className="single-job-page">
         <Header />
         <div className="container">
-          <div className="error-message">{error || "İş detayları yüklenemedi."}</div>
-          <Link to="/jobs" className="back-link">İş İlanları Sayfasına Dön</Link>
+          <div className="error-message">{error || "Job details could not be loaded."}</div>
+          <Link to="/jobs" className="back-link">Return to Job Listings</Link>
         </div>
       </div>
     );
@@ -209,8 +209,8 @@ const SingleJobPage = () => {
           <div className="job-actions">
             {isOwner ? (
               <>
-                <Link to={`/jobs/edit/${jobId}`} className="btn btn-secondary">Düzenle</Link>
-                <button className="btn btn-danger">Sil</button>
+                <Link to={`/jobs/edit/${jobId}`} className="btn btn-secondary">Edit</Link>
+                <button className="btn btn-danger">Delete</button>
               </>
             ) : !isEmployer() && (
               <div className="action-buttons">
@@ -220,7 +220,7 @@ const SingleJobPage = () => {
                     onClick={() => hasApplied ? null : setShowApplyForm(true)}
                     disabled={hasApplied || submitting}
                   >
-                    {hasApplied ? 'Başvuruldu' : submitting ? 'İşleniyor...' : 'Başvur'}
+                    {hasApplied ? 'Applied' : submitting ? 'Processing...' : 'Apply'}
                   </button>
                 )}
                 <button 
@@ -228,7 +228,7 @@ const SingleJobPage = () => {
                   onClick={handleSaveToggle}
                   disabled={savingJob}
                 >
-                  {isSaved ? '★ Kaydedildi' : '☆ Kaydet'}
+                  {isSaved ? '★ Saved' : '☆ Save'}
                 </button>
               </div>
             )}
@@ -238,35 +238,35 @@ const SingleJobPage = () => {
         <div className="job-details">
           <div className="job-info-bar">
             <div className="info-item">
-              <strong>Durum:</strong> 
+              <strong>Status:</strong> 
               <span className={`status-badge ${job.status}`}>
-                {job.status === 'active' ? 'Aktif' : 
-                 job.status === 'closed' ? 'Kapalı' : 
-                 job.status === 'draft' ? 'Taslak' : job.status}
+                {job.status === 'active' ? 'Active' : 
+                 job.status === 'closed' ? 'Closed' : 
+                 job.status === 'draft' ? 'Draft' : job.status}
               </span>
             </div>
             <div className="info-item">
-              <strong>Tür:</strong> 
+              <strong>Type:</strong> 
               <span>
-                {job.type === 'full-time' ? 'Tam Zamanlı' : 
-                 job.type === 'part-time' ? 'Yarı Zamanlı' : 
-                 job.type === 'contract' ? 'Sözleşmeli' : 
-                 job.type === 'internship' ? 'Staj' : job.type}
+                {job.type === 'full-time' ? 'Full Time' : 
+                 job.type === 'part-time' ? 'Part Time' : 
+                 job.type === 'contract' ? 'Contract' : 
+                 job.type === 'internship' ? 'Internship' : job.type}
               </span>
             </div>
             <div className="info-item">
-              <strong>Kategori:</strong> 
+              <strong>Category:</strong> 
               <span>{job.category}</span>
             </div>
             {job.deadline && (
               <div className="info-item">
-                <strong>Son Başvuru:</strong> 
+                <strong>Application Deadline:</strong> 
                 <span>{job.deadline.toLocaleDateString()}</span>
               </div>
             )}
           </div>
           
-          {/* İşe Hızlı Başvuru Butonu - Mobil İçin */}
+          {/* Quick Apply Button - For Mobile */}
           {!isOwner && !isEmployer() && isActive && !hasApplied && (
             <div className="mobile-apply-btn">
               <button 
@@ -274,27 +274,23 @@ const SingleJobPage = () => {
                 onClick={() => setShowApplyForm(true)}
                 disabled={submitting}
               >
-                {submitting ? 'İşleniyor...' : 'Hemen Başvur'}
+                {submitting ? 'Processing...' : 'Apply Now'}
               </button>
             </div>
           )}
           
           {job.salary && job.salary.min > 0 && (
             <div className="job-section">
-              <h3>Maaş Aralığı</h3>
+              <h3>Salary Range</h3>
               <p className="salary">
-                {job.salary.min} - {job.salary.max} {job.salary.currency || 'TRY'}
+                {job.salary.min} - {job.salary.max} {job.salary.currency || 'USD'}
               </p>
             </div>
           )}
           
           <div className="job-section">
-            <h3>İş Tanımı</h3>
+            <h3>Job Description</h3>
             <div className="job-description">
-              <h3>Salary Range</h3>
-              <p>{job.salaryRange}</p>
-              
-              <h3>Job Description</h3>
               {job.description.split('\n').map((paragraph, index) => (
                 paragraph.trim() ? <p key={index}>{paragraph}</p> : <br key={index} />
               ))}
@@ -303,7 +299,7 @@ const SingleJobPage = () => {
           
           {job.requirements && job.requirements.length > 0 && (
             <div className="job-section">
-              <h3>Gereksinimler</h3>
+              <h3>Requirements</h3>
               <ul className="requirements-list">
                 {job.requirements.map((req, index) => (
                   <li key={index}>{req}</li>
@@ -314,7 +310,7 @@ const SingleJobPage = () => {
           
           {job.skills && job.skills.length > 0 && (
             <div className="job-section">
-              <h3>Yetenekler</h3>
+              <h3>Skills</h3>
               <div className="skills-container">
                 {job.skills.map((skill, index) => (
                   <span key={index} className="skill-badge">{skill}</span>
@@ -326,19 +322,19 @@ const SingleJobPage = () => {
           <div className="job-footer">
             <div className="job-meta">
               <div className="meta-item">
-                <strong>Eklenme Tarihi:</strong> {job.createdAt?.toLocaleDateString() || 'N/A'}
+                <strong>Posted Date:</strong> {job.createdAt?.toLocaleDateString() || 'N/A'}
               </div>
               <div className="meta-item">
-                <strong>Görüntülenme:</strong> {job.viewCount || 0}
+                <strong>Views:</strong> {job.viewCount || 0}
               </div>
               <div className="meta-item">
-                <strong>Başvuru Sayısı:</strong> {job.applicationCount || 0}
+                <strong>Applications:</strong> {job.applicationCount || 0}
               </div>
             </div>
             
             <div className="job-footer-actions">
               <Link to="/jobs" className="btn btn-secondary">
-                İş İlanları Sayfasına Dön
+                Back to Job Listings
               </Link>
               
               {!isOwner && !isEmployer() && isActive && !hasApplied && (
@@ -347,30 +343,18 @@ const SingleJobPage = () => {
                   onClick={() => setShowApplyForm(true)}
                   disabled={submitting}
                 >
-                  {submitting ? 'İşleniyor...' : 'Başvur'}
+                  {submitting ? 'Processing...' : 'Apply'}
                 </button>
               )}
             </div>
           </div>
           
           {/* Application Form */}
-          {showApplyForm && !hasApplied && (
-            <div className="application-form-container">
-              <div className="form-header">
-                <h3>İş Başvurusu - {job.title}</h3>
-                <button 
-                  className="close-btn"
-                  onClick={() => setShowApplyForm(false)}
-                  type="button"
-                  disabled={submitting}
-                >
-                  &times;
-                </button>
-              </div>
-              
-              <form onSubmit={handleApply}>
+          {showApplyForm && (
+            <div className="application-form-overlay">
+              <form onSubmit={handleApply} className="application-form">
                 <div className="form-group">
-                  <label htmlFor="coverLetter">Başvuru Mektubu *</label>
+                  <label htmlFor="coverLetter">Cover Letter *</label>
                   <textarea 
                     id="coverLetter"
                     name="coverLetter"
@@ -384,7 +368,7 @@ const SingleJobPage = () => {
                 </div>
                 
                 <div className="form-group">
-                  <label htmlFor="resumeUrl">CV URL (Opsiyonel)</label>
+                  <label htmlFor="resumeUrl">CV URL (Optional)</label>
                   <input
                     type="url"
                     id="resumeUrl"
@@ -394,7 +378,7 @@ const SingleJobPage = () => {
                     placeholder="URL to your online resume"
                     disabled={submitting}
                   />
-                  <small>Dosya yükleme sistemi henüz aktif değil. CV'nizi online bir kaynağa yükleyip link paylaşabilirsiniz.</small>
+                  <small>File upload system is not active yet. You can share your CV link online.</small>
                 </div>
                 
                 <div className="form-actions">
@@ -404,10 +388,10 @@ const SingleJobPage = () => {
                     onClick={() => setShowApplyForm(false)}
                     disabled={submitting}
                   >
-                    İptal
+                    Cancel
                   </button>
                   <button type="submit" className="btn btn-primary" disabled={submitting}>
-                    {submitting ? 'Gönderiliyor...' : 'Başvuru Gönder'}
+                    {submitting ? 'Submitting...' : 'Submit Application'}
                   </button>
                 </div>
               </form>
@@ -416,14 +400,14 @@ const SingleJobPage = () => {
           
           {hasApplied && (
             <div className="applied-message">
-              <p>Bu iş ilanına zaten başvurdunuz. Başvurunuz değerlendirme aşamasındadır.</p>
+              <p>You have already applied for this position. Your application is under review.</p>
             </div>
           )}
           
           {isOwner && (
             <div className="employer-actions">
               <Link to={`/jobs/${jobId}/applications`} className="btn btn-primary">
-                Başvuruları Görüntüle ({job.applicationCount || 0})
+                View Applications ({job.applicationCount || 0})
               </Link>
             </div>
           )}

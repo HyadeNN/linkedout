@@ -1,4 +1,4 @@
-/* Auth sayfaları için stiller */
+/* Styles for Auth pages */
 .role-selection {
   display: flex;
   flex-direction: column;
@@ -48,6 +48,61 @@
 .role-description {
   font-size: 0.9rem;
   color: #666;
+}
+
+/* Google Sign-in Button */
+.auth-social-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 14px;
+  font-weight: 500;
+  color: #3c4043;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.auth-social-button:hover {
+  background-color: #f8f9fa;
+}
+
+.auth-social-button:active {
+  background-color: #f1f3f4;
+}
+
+.auth-social-button.google {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.auth-social-button svg {
+  margin-right: 8px;
+}
+
+/* Auth Divider */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  margin: 20px 0;
+  color: #666;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.auth-divider span {
+  padding: 0 10px;
+  font-size: 14px;
+  text-transform: uppercase;
 }
 
 @media (min-width: 768px) {

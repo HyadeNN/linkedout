@@ -210,14 +210,14 @@ const Feed = () => {
                     <span>{selectedHashtag}</span>
                   </div>
                   <button onClick={clearHashtagFilter} className="clear-filter">
-                    Filtreyi Kaldır
+                    Clear Filter
                   </button>
                 </div>
               )}
               <button onClick={toggleSortDirection} className="sort-button">
                 {sortDirection === 'desc' 
-                  ? <><FaClock /> <span>En Yeni</span></> 
-                  : <><FaHistory /> <span>En Eski</span></>
+                  ? <><FaClock /> <span>Most Recent</span></> 
+                  : <><FaHistory /> <span>Oldest</span></>
                 }
               </button>
             </div>
@@ -229,12 +229,12 @@ const Feed = () => {
             <form onSubmit={handleSearch} className="search-container">
               <input
                 type="text"
-                placeholder="Gönderi veya kişi ara..."
+                placeholder="Search posts or people..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="search-input"
               />
-              <button type="submit" className="search-button">Ara</button>
+              <button type="submit" className="search-button">Search</button>
             </form>
             
             {searchResults.length > 0 && searchTerm && (
@@ -256,7 +256,7 @@ const Feed = () => {
           </div>
 
           {loading ? (
-            <div className="loading-indicator">Gönderiler yükleniyor...</div>
+            <div className="loading-indicator">Loading posts...</div>
           ) : (
             <PostList
               posts={filteredPosts}

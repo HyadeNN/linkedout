@@ -94,6 +94,12 @@ export const AuthProvider = ({ children }) => {
     return result;
   };
 
+  // Google Sign-in
+  const signInWithGoogle = async (role = USER_ROLES.USER) => {
+    const result = await authService.signInWithGoogle(role);
+    return result;
+  };
+
   // Logout
   const logout = async () => {
     try {
@@ -155,6 +161,7 @@ export const AuthProvider = ({ children }) => {
     firebaseUser,
     login,
     register,
+    signInWithGoogle,
     logout,
     loading,
     isEmployer,

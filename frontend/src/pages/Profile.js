@@ -100,7 +100,7 @@ const Profile = () => {
           const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setPosts(data);
         } catch (err) {
-          setPostError('Postlar yüklenemedi.');
+          setPostError('Posts could not be loaded.');
         }
         setPostsLoading(false);
       }
@@ -118,7 +118,7 @@ const Profile = () => {
           const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setArticles(data);
         } catch (err) {
-          setArticleError('Articles yüklenemedi.');
+          setArticleError('Articles could not be loaded.');
         }
         setArticlesLoading(false);
       }
@@ -190,7 +190,7 @@ const Profile = () => {
         createdAt: new Date()
       });
       setProjectForm({ title: '', description: '', imageFile: null });
-      // Yeniden yükle
+      // Reload data
       const q = query(collection(db, 'projects'), where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -220,11 +220,11 @@ const Profile = () => {
         image: postForm.image,
       });
       setPostForm({ content: '', image: null });
-      // Yeniden yükle
+      // Reload data
       const data = await postService.getUserPosts(user.uid);
       setPosts(data);
     } catch (err) {
-      setPostError('Post paylaşılırken hata oluştu.');
+      setPostError('Post sharing failed.');
     }
     setPostSubmitting(false);
   };
@@ -309,7 +309,7 @@ const Profile = () => {
     }
   };
 
-  // Skill formda iş yeri seçimi için experiences'dan company'leri al
+  // Get companies from experiences for the skill form company selection
   const companyOptions = (profile?.experience || [])
     .map(exp => exp.company)
     .filter((c, i, arr) => c && arr.indexOf(c) === i);
@@ -345,7 +345,7 @@ const Profile = () => {
         createdAt: new Date()
       });
       setArticleForm({ title: '', content: '' });
-      // Yeniden yükle
+      // Reload data
       const q = query(collection(db, 'articles'), where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -420,7 +420,7 @@ const Profile = () => {
       
       await updateDoc(projectRef, updateData);
       
-      // Refresh projects list
+      // Reload data
       const q = query(collection(db, 'projects'), where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -479,7 +479,7 @@ const Profile = () => {
       
       await updateDoc(postRef, updateData);
       
-      // Refresh posts list
+      // Reload data
       const q = query(collection(db, 'posts'), where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -515,7 +515,7 @@ const Profile = () => {
         updatedAt: new Date()
       });
       
-      // Refresh articles list
+      // Reload data
       const q = query(collection(db, 'articles'), where('userId', '==', user.uid));
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1018,22 +1018,22 @@ const Profile = () => {
                       </div>
                     )}
                     <div style={{ padding: '0 16px 16px 16px', color: '#888', fontSize: 15 }}>
-                      <span>Beğeni: {post.likes_count || 0}</span>
+                      <span>Likes: {post.likes_count || 0}</span>
                     </div>
-                    {/* Düzenleme formu */}
+                    {/* Edit form */}
                     {editingPost && editingPost.id === post.id && editingSection === 'post' && (
                       <form className="edit-form" onSubmit={handleUpdatePost} style={{ margin: 16 }}>
                         <textarea
                           name="content"
                           value={postForm.content}
                           onChange={e => setPostForm(prev => ({ ...prev, content: e.target.value }))}
-                          placeholder="İçerik"
+                          placeholder="Content"
                           rows="3"
                           required
                         />
                         
                         <div className="hashtags-edit-container">
-                          <label>Hashtag'ler:</label>
+                          <label>Hashtags:</label>
                           <div className="hashtags-edit-list">
                             {postForm.hashtags && postForm.hashtags.map((hashtag, index) => (
                               <div key={index} className="hashtag-edit-item">
@@ -1078,7 +1078,7 @@ const Profile = () => {
                                 }
                               }}
                             >
-                              Ekle
+                              Add
                             </button>
                           </div>
                         </div>
@@ -1090,10 +1090,10 @@ const Profile = () => {
                           onChange={e => setPostForm(prev => ({ ...prev, image: e.target.files[0] }))}
                         />
                         <button type="submit" className="save-button" disabled={postSubmitting}>
-                          {postSubmitting ? 'Kaydediliyor...' : 'Kaydet'}
+                          {postSubmitting ? 'Saving...' : 'Save'}
                         </button>
                         <button type="button" className="add-button" style={{ marginLeft: 8 }} onClick={() => { setEditingPost(null); setEditingSection(null); }}>
-                          İptal
+                          Cancel
                         </button>
                         {postError && <div className="post-error">{postError}</div>}
                       </form>

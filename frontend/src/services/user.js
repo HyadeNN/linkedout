@@ -74,9 +74,9 @@ export const getCurrentUserData = async (userId) => {
     }
     
     const userData = userDoc.data();
-    console.log("Raw Firebase user data:", userData); // Debug için eklendi
+    console.log("Raw Firebase user data:", userData); // Added for debugging
     
-    // Firebase'den gelen veriyi doğru şekilde yapılandır
+    // Properly format data from Firebase
     const formattedData = {
       id: userId,
       name: userData?.name || '',
@@ -95,7 +95,7 @@ export const getCurrentUserData = async (userId) => {
       skill: userData?.skill || []
     };
     
-    console.log("Formatted user data:", formattedData); // Debug için eklendi
+    console.log("Formatted user data:", formattedData); // Added for debugging
     return formattedData;
   } catch (error) {
     console.error('Error fetching user data:', error);

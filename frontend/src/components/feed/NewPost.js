@@ -217,7 +217,7 @@ const NewPost = ({ onPostCreated }) => {
         {expanded ? (
           <div className="post-input-container">
             <textarea
-              placeholder="Ne düşünüyorsun?"
+              placeholder="What's on your mind?"
               value={content}
               onChange={handleContentChange}
               className="post-input"
@@ -248,7 +248,7 @@ const NewPost = ({ onPostCreated }) => {
             <div className="post-actions">
               <div className="post-tools">
                 <button onClick={handleImageClick} className="tool-btn">
-                  📷 Fotoğraf
+                  📷 Photo
                 </button>
                 <input
                   type="file"
@@ -260,7 +260,7 @@ const NewPost = ({ onPostCreated }) => {
                 <div className="hashtag-input-container">
                   <input
                     type="text"
-                    placeholder="Hashtag ekle"
+                    placeholder="Add hashtag"
                     value={currentHashtag}
                     onChange={handleHashtagChange}
                     onKeyDown={handleHashtagKeyDown}
@@ -284,14 +284,14 @@ const NewPost = ({ onPostCreated }) => {
               </div>
               <div className="post-buttons">
                 <button onClick={handleCancel} className="cancel-btn">
-                  İptal
+                  Cancel
                 </button>
                 <button
                   onClick={handleSubmit}
                   disabled={submitting || (!content.trim() && !image)}
                   className="post-btn"
                 >
-                  {submitting ? 'Paylaşılıyor...' : 'Paylaş'}
+                  {submitting ? 'Posting...' : 'Post'}
                 </button>
               </div>
             </div>
@@ -301,7 +301,7 @@ const NewPost = ({ onPostCreated }) => {
             className="post-input-placeholder"
             onClick={handleTextClick}
           >
-            Ne düşünüyorsun?
+            What's on your mind?
           </div>
         )}
       </div>

@@ -1,11 +1,11 @@
-import { auth } from '../firebase';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from 'firebase/auth';
+import { auth, googleProvider } from '../firebase';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile, signInWithPopup } from 'firebase/auth';
 import { encodeFormData } from '../utils/formEncoder';
 import { debugLog } from '../utils/helpers';
 import api, { setAuthToken } from './api';
 import axios from 'axios';
 import { db } from '../firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { USER_ROLES } from '../contexts/AuthContext';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8001/api';
@@ -73,6 +73,75 @@ export const register = async (userData) => {
     return { user: userCredential.user };
   } catch (error) {
     console.error('Registration error:', error);
+    throw error;
+  }
+};
+
+// Google Auth Sign-in/Sign-up
+export const signInWithGoogle = async (role = USER_ROLES.USER) => {
+  try {
+    // Configure Google to request a user account selection
+    googleProvider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
+    const result = await signInWithPopup(auth, googleProvider);
+    const user = result.user;
+    
+    // Check if user already exists in Firestore
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    
+    if (!userDoc.exists()) {
+      // This is a new user, create their profile in Firestore
+      // Extract name parts
+      const displayName = user.displayName || '';
+      const nameParts = displayName.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      
+      // Create new user document
+      const userDataForFirestore = {
+        name: displayName,
+        email: user.email,
+        role,
+        createdAt: new Date().toISOString(),
+        profile: {
+          profile_image: user.photoURL || '',
+          cover_image: '',
+          about: ''
+        },
+        profile_image: user.photoURL || '',
+        cover_image: '',
+        headline: '',
+        location: '',
+        bio: '',
+        connections: [],
+        sentFriendRequests: [],
+        friendRequests: [],
+        experience: [],
+        education: [],
+        skill: [],
+        activity: [],
+        interest: []
+      };
+      
+      await setDoc(doc(db, 'users', user.uid), userDataForFirestore);
+    }
+    
+    // Save user to local storage
+    const userDataForLocalStorage = {
+      email: user.email,
+      displayName: user.displayName,
+      uid: user.uid,
+      profile_image: user.photoURL,
+      role: userDoc.exists() ? userDoc.data().role : role // Use existing role if user exists
+    };
+    
+    localStorage.setItem('user', JSON.stringify(userDataForLocalStorage));
+    
+    return { user };
+  } catch (error) {
+    console.error('Google sign-in error:', error);
     throw error;
   }
 };

@@ -106,7 +106,7 @@ const Sidebar = () => {
       <div className="recent-card modern-card long-card">
         <div className="trending-hashtags">
           <div className="hashtags-header">
-            <h3>Popüler Hashtagler</h3>
+            <h3>Popular Hashtags</h3>
             <button onClick={toggleSortDirection} className="sort-button">
               {sortDirection === 'desc' ? <FaSortAmountDown /> : <FaSortAmountUp />}
             </button>
@@ -120,7 +120,7 @@ const Sidebar = () => {
               >
                 <FaHashtag className="hashtag-icon" />
                 <span>{hashtag.name.replace('#', '')}</span>
-                <span className="hashtag-count">{hashtag.count} gönderi</span>
+                <span className="hashtag-count">{hashtag.count} posts</span>
               </button>
             ))}
           </div>
