@@ -1,170 +1,86 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { userService, profileService, connectionService, postService } from '../services';
 import { useAuth } from '../contexts/AuthContext';
-import { db, storage } from '../firebase';
-import { 
-  doc, 
-  getDoc, 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  getDocs, 
-  updateDoc, 
-  arrayUnion, 
-  arrayRemove, 
-  addDoc, 
-  serverTimestamp 
-} from 'firebase/firestore';
 import PostList from '../components/feed/PostList';
-import './UserProfile.css';
+import ProfileView from '../components/profile/ProfileView';
+import ConnectionList from '../components/network/ConnectionList';
 
 const UserProfile = () => {
   const { userId } = useParams();
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useAuth();
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [connectionStatus, setConnectionStatus] = useState('none');
-  const [mutualConnections, setMutualConnections] = useState([]);
+  const [connectionStatus, setConnectionStatus] = useState(null);
+  const [isFollowing, setIsFollowing] = useState(false);
   const [mutualCount, setMutualCount] = useState(0);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedTab, setSelectedTab] = useState('posts');
-  const [connectionId, setConnectionId] = useState(null);
-  const [isSender, setIsSender] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
 
   // Check if viewing own profile
-  const isOwnProfile = currentUser?.uid === userId;
+  const isOwnProfile = currentUser?.id === parseInt(userId);
 
-  // Fetch user data directly from Firebase
+  // Fetch user data
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        setError('');
-        
-        // Get user document directly from Firestore
-        const userRef = doc(db, 'users', userId);
-        const userSnap = await getDoc(userRef);
-        
-        if (!userSnap.exists()) {
-          setError('User not found');
-          setLoading(false);
-          return;
-        }
-        
-        const userData = userSnap.data();
-        setUser({
-          id: userId,
-          ...userData
-        });
-        
-        // Set profile data
-        setProfile(userData.profile || {});
 
-        // If not viewing own profile, check connection status
-        if (!isOwnProfile && currentUser) {
-          // Get current user's data to check connections array
-          const currentUserRef = doc(db, 'users', currentUser.uid);
-          const currentUserSnap = await getDoc(currentUserRef);
-          
-          if (currentUserSnap.exists()) {
-            const currentUserData = currentUserSnap.data();
-            const connections = currentUserData.connections || [];
-            
-            // If user is in connections, set status to accepted
-            if (connections.includes(userId)) {
-              setConnectionStatus('accepted');
-            } else {
-              // Check for pending requests
-              const friendRequests = currentUserData.friendRequests || [];
-              const sentRequests = currentUserData.sentFriendRequests || [];
-              
-              // Check if there's a request from this user
-              const pendingRequest = friendRequests.find(req => req.uid === userId);
-              
-              if (pendingRequest) {
-                setConnectionStatus('pending');
-                setIsSender(false);
-              } 
-              // Check if we sent a request to this user
-              else if (sentRequests.includes(userId)) {
-                setConnectionStatus('pending');
-                setIsSender(true);
-              } else {
-                setConnectionStatus('none');
-              }
-            }
-            
-            // Get mutual connections
-            const userConnections = userData.connections || [];
-            const mutual = connections.filter(id => userConnections.includes(id));
-            setMutualCount(mutual.length);
-            
-            // Get details for first 5 mutual connections
-            const mutualDetails = [];
-            for (let i = 0; i < Math.min(5, mutual.length); i++) {
-              const mutualUserRef = doc(db, 'users', mutual[i]);
-              const mutualUserSnap = await getDoc(mutualUserRef);
-              if (mutualUserSnap.exists()) {
-                mutualDetails.push({
-                  id: mutual[i],
-                  ...mutualUserSnap.data()
-                });
-              }
-            }
-            
-            setMutualConnections(mutualDetails);
-          }
+        // Get user data
+        const userData = await userService.getUserById(userId);
+        setUser(userData);
+
+        // Get profile data
+        const profileData = await profileService.getUserProfile(userId);
+        setProfile(profileData);
+
+        if (!isOwnProfile) {
+          // Check connection status
+          const statusData = await connectionService.checkConnectionStatus(userId);
+          setConnectionStatus(statusData);
+
+          // Check if following
+          const followingStatus = await connectionService.isFollowingUser(userId);
+          setIsFollowing(followingStatus.is_following);
+
+          // Get mutual connections count
+          const mutualData = await connectionService.getMutualConnections(userId, 1, 1);
+          setMutualCount(mutualData.total);
         }
-      } catch (err) {
-        console.error("Error fetching user data:", err);
-        setError('An error occurred while loading profile');
+      } catch (error) {
+        console.error('Failed to fetch user data:', error);
+        setError('Failed to load user profile. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
-    if (userId) {
-      fetchUserData();
-    }
+    fetchUserData();
   }, [userId, isOwnProfile, currentUser]);
 
   // Fetch user posts
   useEffect(() => {
     const fetchUserPosts = async () => {
-      if (selectedTab === 'posts' && userId) {
+      if (selectedTab === 'posts') {
         try {
           setPostsLoading(true);
-          
-          // Query posts collection for posts by this user
-          const postsRef = collection(db, 'posts');
-          const q = query(
-            postsRef,
-            where('userId', '==', userId),
-            orderBy('createdAt', 'desc')
-          );
-          
-          const snapshot = await getDocs(q);
-          const userPosts = [];
-          
-          snapshot.forEach(doc => {
-            const postData = doc.data();
-            userPosts.push({
-              id: doc.id,
-              ...postData,
-              imageUrl: postData.imageUrl || '',
-              createdAt: postData.createdAt?.toDate()
-            });
-          });
-          
-          setPosts(userPosts);
+          const postsData = await postService.getUserPosts(userId, page);
+
+          if (page === 1) {
+            setPosts(postsData.items);
+          } else {
+            setPosts(prevPosts => [...prevPosts, ...postsData.items]);
+          }
+
+          setHasMore(postsData.has_next);
         } catch (error) {
-          console.error('Error loading posts:', error);
-          setError('An error occurred while loading posts');
+          console.error('Failed to fetch user posts:', error);
         } finally {
           setPostsLoading(false);
         }
@@ -172,126 +88,60 @@ const UserProfile = () => {
     };
 
     fetchUserPosts();
-  }, [userId, selectedTab]);
+  }, [userId, selectedTab, page]);
 
   // Handle connect/disconnect
-  const handleConnectionAction = async () => {
-    if (!currentUser) {
-      alert('Please log in to perform this action');
-      return;
-    }
-    
+  const handleConnectionAction = async (action) => {
     try {
       setActionLoading(true);
 
-      if (connectionStatus === 'none') {
+      if (!connectionStatus || connectionStatus.status === 'none') {
         // Send connection request
-        const currentUserRef = doc(db, 'users', currentUser.uid);
-        const targetUserRef = doc(db, 'users', userId);
-        
-        // Add to sent requests in current user's document
-        await updateDoc(currentUserRef, {
-          sentFriendRequests: arrayUnion(userId)
-        });
-        
-        // Add to friend requests array in the target user document
-        await updateDoc(targetUserRef, {
-          friendRequests: arrayUnion({
-            uid: currentUser.uid,
-            status: 'pending'
-          })
-        });
-        
-        setConnectionStatus('pending');
-        setIsSender(true);
-        
-      } else if (connectionStatus === 'pending' && isSender) {
+        await connectionService.createConnectionRequest(userId);
+        setConnectionStatus({ status: 'pending', is_sender: true });
+      } else if (connectionStatus.status === 'pending' && connectionStatus.is_sender) {
         // Withdraw connection request
-        const currentUserRef = doc(db, 'users', currentUser.uid);
-        const targetUserRef = doc(db, 'users', userId);
-        
-        // Remove from sent requests in current user's document
-        await updateDoc(currentUserRef, {
-          sentFriendRequests: arrayRemove(userId)
-        });
-        
-        // Remove from friend requests array in target user
-        await updateDoc(targetUserRef, {
-          friendRequests: arrayRemove({
-            uid: currentUser.uid,
-            status: 'pending'
-          })
-        });
-        
-        setConnectionStatus('none');
-        
-      } else if (connectionStatus === 'accepted') {
+        await connectionService.deleteConnection(connectionStatus.connection_id);
+        setConnectionStatus({ status: 'none' });
+      } else if (connectionStatus.status === 'accepted') {
         // Remove connection
-        const targetUserRef = doc(db, 'users', userId);
-        await updateDoc(targetUserRef, {
-          connections: arrayRemove(currentUser.uid)
-        });
-        
-        const currentUserRef = doc(db, 'users', currentUser.uid);
-        await updateDoc(currentUserRef, {
-          connections: arrayRemove(userId)
-        });
-        
-        setConnectionStatus('none');
+        await connectionService.deleteConnection(connectionStatus.connection_id);
+        setConnectionStatus({ status: 'none' });
+      } else if (connectionStatus.status === 'pending' && !connectionStatus.is_sender && action) {
+        if (action === 'accept') {
+          await connectionService.updateConnectionStatus(connectionStatus.connection_id, 'accepted');
+          setConnectionStatus({
+            ...connectionStatus,
+            status: 'accepted'
+          });
+        } else if (action === 'ignore') {
+          await connectionService.deleteConnection(connectionStatus.connection_id);
+          setConnectionStatus({ status: 'none' });
+        }
       }
     } catch (error) {
-      console.error('Bağlantı işlemi başarısız oldu:', error);
-      alert('İşlem başarısız oldu. Lütfen tekrar deneyin.');
+      console.error('Failed to perform connection action:', error);
+      alert('Failed to perform action. Please try again.');
     } finally {
       setActionLoading(false);
     }
   };
 
-  // Handle accept/reject connection request
-  const handleConnectionResponse = async (accept) => {
-    if (!currentUser) {
-      alert('Please log in to perform this action');
-      return;
-    }
-    
+  // Handle follow/unfollow
+  const handleFollowAction = async () => {
     try {
       setActionLoading(true);
 
-      if (connectionStatus === 'pending' && !isSender) {
-        const currentUserRef = doc(db, 'users', currentUser.uid);
-        const targetUserRef = doc(db, 'users', userId);
-        
-        // Remove from friend requests array
-        await updateDoc(currentUserRef, {
-          friendRequests: arrayRemove({
-            uid: userId,
-            status: 'pending'
-          })
-        });
-        
-        // Remove from sent requests in target user
-        await updateDoc(targetUserRef, {
-          sentFriendRequests: arrayRemove(currentUser.uid)
-        });
-        
-        if (accept) {
-          // Add to connections arrays
-          await updateDoc(targetUserRef, {
-            connections: arrayUnion(currentUser.uid)
-          });
-          
-          await updateDoc(currentUserRef, {
-            connections: arrayUnion(userId)
-          });
-          
-          setConnectionStatus('accepted');
-        } else {
-          setConnectionStatus('none');
-        }
+      if (isFollowing) {
+        await connectionService.unfollowUser(userId);
+        setIsFollowing(false);
+      } else {
+        await connectionService.followUser(userId);
+        setIsFollowing(true);
       }
     } catch (error) {
-      console.error('Bağlantı yanıtı başarısız oldu:', error);
-      alert('İşlem başarısız oldu. Lütfen tekrar deneyin.');
+      console.error('Failed to perform follow action:', error);
+      alert('Failed to perform action. Please try again.');
     } finally {
       setActionLoading(false);
     }
@@ -300,6 +150,16 @@ const UserProfile = () => {
   // Handle tab change
   const handleTabChange = (tab) => {
     setSelectedTab(tab);
+    setPage(1);
+    setPosts([]);
+    setHasMore(true);
+  };
+
+  // Handle load more
+  const handleLoadMore = () => {
+    if (hasMore && !postsLoading) {
+      setPage(prevPage => prevPage + 1);
+    }
   };
 
   // Handle post update
@@ -316,266 +176,126 @@ const UserProfile = () => {
     setPosts(prevPosts => prevPosts.filter(post => post.id !== postId));
   };
 
-  if (loading) return <div className="loading-spinner">Profil bilgileri yükleniyor...</div>;
-  if (error) return <div className="error-message">{error}</div>;
-  if (!user) return <div className="error-message">Kullanıcı bulunamadı</div>;
+  if (loading) {
+    return <div className="loading-indicator">Loading profile...</div>;
+  }
 
-  // Make sure we have arrays for these fields
-  const experiences = user.experience || [];
-  const educations = user.education || [];
-  const skills = user.skill || [];
-  const connectionCount = user.connections?.length || 0;
+  if (error) {
+    return (
+      <div className="error-container">
+        <p className="error-message">{error}</p>
+        <Link to="/" className="back-link">Back to Home</Link>
+      </div>
+    );
+  }
+
+  if (!user || !profile) {
+    return (
+      <div className="error-container">
+        <p className="error-message">User not found.</p>
+        <Link to="/" className="back-link">Back to Home</Link>
+      </div>
+    );
+  }
 
   return (
-    <div className="user-profile-figma-bg">
-      <div className="user-profile-figma-container">
-        {/* Profile Main Card */}
-        <div className="profile-main-card profile-header-modern">
-          <div className="profile-cover-figma cover-image-modern">
-            <img 
-              src={profile?.cover_image || "/images/default-cover.jpg"} 
-              alt="Cover" 
-              onError={(e) => {e.target.src = "/images/default-cover.jpg"}}
-            />
-          </div>
-          <div className="profile-info-figma profile-info-modern">
-            <div className="profile-name-row name-section-modern">
-              <span className="profile-name-figma profile-name-modern">
-                {user.name || 'İsimsiz Kullanıcı'}
-              </span>
-              {user.role === 'employer' && (
-                <span className="employer-badge">İşveren</span>
-              )}
+    <div className="user-profile-page">
+      <ProfileView
+        profile={profile}
+        user={user}
+        isCurrentUser={isOwnProfile}
+        connectionStatus={connectionStatus}
+        onConnectionAction={handleConnectionAction}
+      />
+
+      <div className="profile-body">
+        <div className="profile-content">
+          <div className="profile-section posts-section">
+            <div className="section-tabs">
+              <button
+                className={`tab-btn ${selectedTab === 'posts' ? 'active' : ''}`}
+                onClick={() => handleTabChange('posts')}
+              >
+                Posts
+              </button>
+              <button
+                className={`tab-btn ${selectedTab === 'activity' ? 'active' : ''}`}
+                onClick={() => handleTabChange('activity')}
+              >
+                Activity
+              </button>
             </div>
-            {user.headline && <div className="profile-headline-figma profile-headline-modern">{user.headline}</div>}
-            {user.location && <div className="profile-location-figma location-modern">{user.location}</div>}
-            
-            <div className="profile-actions-modern">
-              {isOwnProfile ? (
-                <Link to="/profile/settings" className="action-button-modern primary">
-                  Profili Düzenle
-                </Link>
-              ) : connectionStatus !== 'accepted' ? (
-                <button 
-                  className="action-button-modern primary"
-                  onClick={handleConnectionAction}
-                  disabled={actionLoading}
-                >
-                  {connectionStatus === 'none' && 'Bağlantı Kur'}
-                  {connectionStatus === 'pending' && isSender && 'İsteği İptal Et'}
-                  {connectionStatus === 'pending' && !isSender && (
-                    <div className="request-actions">
-                      <button onClick={() => handleConnectionResponse(true)}>Kabul Et</button>
-                      <button onClick={() => handleConnectionResponse(false)}>Reddet</button>
-                    </div>
-                  )}
-                </button>
-              ) : (
-                <button 
-                  className="action-button-modern danger"
-                  onClick={handleConnectionAction}
-                  disabled={actionLoading}
-                >
-                  Bağlantıyı Kaldır
-                </button>
-              )}
-              {user.email && (
-                <button className="action-button-modern secondary email-button">
-                  {user.email}
-                </button>
-              )}
-            </div>
-            
-            <div className="connection-info">
-              {connectionCount > 0 ? (
-                <span>{connectionCount} bağlantı</span>
-              ) : (
-                <span>Henüz bağlantı yok</span>
-              )}
-              {mutualCount > 0 && !isOwnProfile && (
-                <span className="mutual-count">• {mutualCount} ortak bağlantı</span>
-              )}
-            </div>
-          </div>
-          
-          <div className="profile-photo-figma profile-picture-modern">
-            <img 
-              src={profile?.profile_image || "/images/default-avatar.jpg"} 
-              alt={user.name || "Kullanıcı"} 
-              onError={(e) => {e.target.src = "/images/default-avatar.jpg"}}
-            />
-          </div>
-          
-          {/* Tab Bar */}
-          <div className="profile-tabs-bar">
-            <button 
-              className={`profile-tab ${selectedTab === 'posts' ? 'active' : ''}`}
-              onClick={() => handleTabChange('posts')}
-            >
-              Posts
-            </button>
-            <button 
-              className={`profile-tab ${selectedTab === 'activity' ? 'active' : ''}`}
-              onClick={() => handleTabChange('activity')}
-            >
-              Aktiviteler & İlgi Alanları
-            </button>
-            <button 
-              className={`profile-tab ${selectedTab === 'articles' ? 'active' : ''}`}
-              onClick={() => handleTabChange('articles')}
-            >
-              Makaleler
-            </button>
+
+            {selectedTab === 'posts' && (
+              <>
+                {postsLoading && posts.length === 0 ? (
+                  <div className="loading-indicator">Loading posts...</div>
+                ) : posts.length === 0 ? (
+                  <div className="empty-posts">
+                    <p>No posts yet</p>
+                  </div>
+                ) : (
+                  <>
+                    <PostList
+                      posts={posts}
+                      onUpdatePost={handleUpdatePost}
+                      onDeletePost={handleDeletePost}
+                    />
+
+                    {hasMore && (
+                      <button
+                        className="load-more-btn"
+                        onClick={handleLoadMore}
+                        disabled={postsLoading}
+                      >
+                        {postsLoading ? 'Loading...' : 'Load More'}
+                      </button>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
+            {selectedTab === 'activity' && (
+              <div className="activity-content">
+                <p>Recent activity will be shown here.</p>
+              </div>
+            )}
           </div>
         </div>
-        
-        {/* Tab Content */}
-        {selectedTab === 'posts' && (
-          <div className="profile-wide-card">
-            <div className="tab-content">
-              <PostList
-                posts={posts}
-                loading={postsLoading}
-                onUpdatePost={handleUpdatePost}
-                onDeletePost={handleDeletePost}
-                isOwnProfile={isOwnProfile}
-                showUser={false}
+
+        <div className="profile-sidebar">
+          {!isOwnProfile && mutualCount > 0 && (
+            <div className="sidebar-section mutual-section">
+              <ConnectionList
+                userId={userId}
+                limit={5}
+                showViewAll={true}
               />
-              {!postsLoading && posts.length === 0 && (
-                <div className="empty-section">No posts shared yet</div>
-              )}
             </div>
-          </div>
-        )}
-        
-        {selectedTab === 'activity' && (
-          <div className="profile-wide-card">
-            <div className="tab-content">
-              {user.activity && user.activity.length > 0 ? (
-                <div className="activity-list">
-                  {user.activity.map((activity, index) => (
-                    <div key={activity.id || index} className="activity-item">
-                      <h3>{activity.title}</h3>
-                      <p>{activity.description}</p>
-                      {activity.date && <span className="activity-date">{new Date(activity.date).toLocaleDateString()}</span>}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-section">Henüz aktivite bulunmuyor</div>
-              )}
+          )}
+
+          {profile.website && (
+            <div className="sidebar-section contact-section">
+              <h3 className="sidebar-title">Contact</h3>
+              <div className="contact-info">
+                <p className="website">
+                  <span className="contact-label">Website:</span>
+                  <a href={profile.website} target="_blank" rel="noopener noreferrer" className="contact-value">
+                    {profile.website}
+                  </a>
+                </p>
+
+                {profile.phone_number && (
+                  <p className="phone">
+                    <span className="contact-label">Phone:</span>
+                    <span className="contact-value">{profile.phone_number}</span>
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-        
-        {selectedTab === 'articles' && (
-          <div className="profile-wide-card">
-            <div className="tab-content">
-              {user.interest && user.interest.length > 0 ? (
-                <div className="interest-list">
-                  {user.interest.map((interest, index) => (
-                    <div key={interest.id || index} className="interest-item">
-                      <h3>{interest.name}</h3>
-                      {interest.description && <p>{interest.description}</p>}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="empty-section">Henüz ilgi alanı eklenmemiş</div>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {/* About, Experience, Education, Skills cards only show when posts tab is active */}
-        {selectedTab === 'posts' && (
-          <>
-            {/* About Card */}
-            <div className="profile-wide-card">
-              <h2 className="section-title">Hakkında</h2>
-              <p className="about-text">
-                {profile?.about || user?.bio || 'Kullanıcı hakkında bilgi girilmemiş.'}
-              </p>
-            </div>
-            
-            {/* Experience Card */}
-            <div className="profile-wide-card">
-              <h2 className="section-title">Deneyim</h2>
-              {experiences && experiences.length > 0 ? (
-                <div className="experience-list">
-                  {experiences.map((exp, index) => (
-                    <div key={exp.id || index} className="experience-mini-card">
-                      <div className="experience-logo">
-                        <div className="company-logo-placeholder"></div>
-                      </div>
-                      <div className="experience-details">
-                        <h3 className="experience-title">{exp.title || 'Pozisyon'}</h3>
-                        <p className="experience-company">{exp.company || 'Şirket'}</p>
-                        <p className="experience-date">
-                          {exp.start_date ? new Date(exp.start_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : 'Başlangıç Tarihi'} -
-                          {exp.is_current ? ' Halen Devam Ediyor' : exp.end_date ? ` ${new Date(exp.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' })}` : ' Bitiş Tarihi'}
-                        </p>
-                        <p className="experience-location">{exp.location || 'Konum'}</p>
-                        {exp.description && <p className="experience-description">{exp.description}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-section">Henüz deneyim eklenmemiş.</p>
-              )}
-            </div>
-            
-            {/* Education Card */}
-            <div className="profile-wide-card">
-              <h2 className="section-title">Eğitim</h2>
-              {educations && educations.length > 0 ? (
-                <div className="education-list">
-                  {educations.map((edu, index) => (
-                    <div key={edu.id || index} className="education-mini-card">
-                      <div className="education-logo">
-                        <div className="school-logo-placeholder"></div>
-                      </div>
-                      <div className="education-details">
-                        <h3 className="education-school">{edu.school || 'Okul'}</h3>
-                        <p className="education-degree">
-                          {edu.degree || 'Derece'}
-                          {edu.field_of_study ? `, ${edu.field_of_study}` : ''}
-                        </p>
-                        <p className="education-date">
-                          {edu.start_date ? new Date(edu.start_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' }) : 'Başlangıç Tarihi'} -
-                          {edu.is_current ? ' Halen Devam Ediyor' : edu.end_date ? ` ${new Date(edu.end_date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'short' })}` : ' Bitiş Tarihi'}
-                        </p>
-                        {edu.description && <p className="education-description">{edu.description}</p>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-section">Henüz eğitim eklenmemiş.</p>
-              )}
-            </div>
-            
-            {/* Skills Card */}
-            <div className="profile-wide-card">
-              <h2 className="section-title">Yetenekler</h2>
-              {skills && skills.length > 0 ? (
-                <div className="skills-list">
-                  {skills.map((skill, index) => (
-                    <div key={skill.id || index} className="skill-item">
-                      <span className="skill-name">{typeof skill === 'string' ? skill : skill.name}</span>
-                      {typeof skill !== 'string' && skill.endorsement_count > 0 && (
-                        <span className="endorsement-count">{skill.endorsement_count}</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="empty-section">Henüz yetenek eklenmemiş.</p>
-              )}
-            </div>
-          </>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

@@ -1,917 +1,102 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { connectionService, teammateService, teamService } from '../services';
-import { useAuth } from '../contexts/AuthContext';
-import { FaLink, FaBell, FaUsers } from 'react-icons/fa';
-import './Network.css';
-import { collection, query, getDocs, where, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
-import { db, auth } from '../firebase';
-import { Box, Grid, Typography, Container, CircularProgress, Alert, Card, CardContent, Avatar, Button, TextField } from '@mui/material';
-import UserCard from '../components/UserCard';
-import FriendRequests from '../components/FriendRequests';
-import { useConnection } from '../contexts/ConnectionContext';
+import React, { useState } from 'react';
+import ConnectionList from '../components/network/ConnectionList';
+import ConnectionRequests from '../components/network/ConnectionRequests';
+import ConnectionSuggestions from '../components/network/ConnectionSuggestions';
 
 const Network = () => {
-  const [requests, setRequests] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [requestsLoading, setRequestsLoading] = useState(true);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState('connections');
-  const [requestsCount, setRequestsCount] = useState(0);
-  const [actionLoading, setActionLoading] = useState(false);
-  const { user } = useAuth();
-  const [teammates, setTeammates] = useState([]);
-  const [teammateInvites, setTeammateInvites] = useState([]);
-  const [inviteUserId, setInviteUserId] = useState('');
-  const [users, setUsers] = useState([]);
-  const [friendRequests, setFriendRequests] = useState([]);
-  const [sentRequests, setSentRequests] = useState([]);
-  const defaultProfileImage = '/default-avatar.jpg';
-  const [error, setError] = useState(null);
-  const { connections, setConnections, updateConnectionCount } = useConnection();
-  const [newTeamName, setNewTeamName] = useState('');
-  const [selectedConnections, setSelectedConnections] = useState([]);
-  const [isCreatingTeam, setIsCreatingTeam] = useState(false);
-  const [teams, setTeams] = useState([]);
-  const [teamMembers, setTeamMembers] = useState([]);
-  const [loadingTeams, setLoadingTeams] = useState(false);
 
-  // Fetch all users except current user and already connected users
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!auth.currentUser) {
-        console.log('No authenticated user');
-        setError('Please login to view users');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-        
-        // Get current user's data including connections and sent requests
-        const currentUserRef = doc(db, 'users', auth.currentUser.uid);
-        const currentUserDoc = await getDoc(currentUserRef);
-        
-        if (!currentUserDoc.exists()) {
-          console.log('Current user document not found in Firestore');
-          // Create user document if it doesn't exist
-          const userData = {
-            name: auth.currentUser.displayName || '',
-            email: auth.currentUser.email || '',
-            profile: {
-              profile_image: '',
-              cover_image: '',
-              about: ''
-            },
-            connections: [],
-            sentFriendRequests: [],
-            friendRequests: []
-          };
-          await updateDoc(currentUserRef, userData);
-        }
-
-        const currentUserData = currentUserDoc.exists() ? currentUserDoc.data() : {};
-        const connections = currentUserData?.connections || [];
-        setConnections(connections);
-        
-        // Fetch connection details
-        const connectionPromises = connections.map(async (connectionId) => {
-          const userDoc = await getDoc(doc(db, 'users', connectionId));
-          if (userDoc.exists()) {
-            return {
-              id: connectionId,
-              ...userDoc.data()
-            };
-          }
-          return null;
-        });
-        
-        const connectionDetails = await Promise.all(connectionPromises);
-        const validConnections = connectionDetails.filter(Boolean);
-        
-        // Get sent friend requests
-        const sentFriendRequests = currentUserData?.sentFriendRequests || [];
-        setSentRequests(sentFriendRequests);
-
-        // Query all users
-        const usersRef = collection(db, 'users');
-        const querySnapshot = await getDocs(usersRef);
-        
-        const usersData = [];
-        querySnapshot.forEach((doc) => {
-          // Skip current user and already connected users
-          if (doc.id !== auth.currentUser.uid && !connections.includes(doc.id)) {
-            const userData = doc.data();
-            usersData.push({
-              id: doc.id,
-              ...userData,
-              isRequestSent: sentFriendRequests.includes(doc.id)
-            });
-          }
-        });
-        
-        // Combine connection details with other users
-        setUsers([...validConnections, ...usersData]);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-        setError('Failed to load users. Please try again later.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (selectedTab === 'connections') {
-      fetchUsers();
-    }
-  }, [selectedTab]);
-
-  // Fetch connections
-  useEffect(() => {
-    const fetchConnections = async () => {
-      try {
-        setLoading(true);
-        const response = await connectionService.getConnections();
-        setConnections(response.items);
-      } catch (error) {
-        console.error('Failed to fetch connections:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchConnections();
-  }, []);
-
-  // Fetch connection requests
-  useEffect(() => {
-    const fetchRequests = async () => {
-      try {
-        setRequestsLoading(true);
-        const response = await connectionService.getConnectionRequests();
-        setRequests(response.items);
-        setRequestsCount(response.total);
-      } catch (error) {
-        console.error('Failed to fetch connection requests:', error);
-      } finally {
-        setRequestsLoading(false);
-      }
-    };
-
-    fetchRequests();
-  }, []);
-
-  // Fetch suggestions
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      try {
-        setSuggestionsLoading(true);
-        const response = await connectionService.getConnectionSuggestions();
-        setSuggestions(response.items);
-      } catch (error) {
-        console.error('Failed to fetch connection suggestions:', error);
-      } finally {
-        setSuggestionsLoading(false);
-      }
-    };
-
-    fetchSuggestions();
-  }, []);
-
-  // Teammates
-  useEffect(() => {
-    if (selectedTab === 'teammates') {
-      teammateService.getTeammates().then(setTeammates);
-      teammateService.getTeammateInvites().then(setTeammateInvites);
-    }
-  }, [selectedTab]);
-
-  // Fetch friend requests
-  useEffect(() => {
-    const fetchFriendRequests = async () => {
-      try {
-        const currentUserRef = doc(db, 'users', auth.currentUser.uid);
-        const userDoc = await getDoc(currentUserRef);
-        
-        if (userDoc.exists()) {
-          const requests = userDoc.data().friendRequests || [];
-          setFriendRequests(requests);
-        }
-      } catch (error) {
-        console.error('Error fetching friend requests:', error);
-      }
-    };
-
-    if (auth.currentUser) {
-      fetchFriendRequests();
-    }
-  }, []);
-
-  // Fetch user's teams and their members
-  useEffect(() => {
-    const fetchTeamMembers = async () => {
-      if (!user?.uid) return;
-      
-      try {
-        setLoadingTeams(true);
-        const userRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userRef);
-        
-        if (!userDoc.exists()) return;
-        
-        const userTeams = userDoc.data().teams || [];
-        const teamDetailsPromises = userTeams.map(teamId => teamService.getTeamById(teamId));
-        const teamsData = await Promise.all(teamDetailsPromises);
-        
-        // Filter out null results (teams that might have been deleted)
-        const validTeams = teamsData.filter(team => team !== null);
-        setTeams(validTeams);
-        
-        // Collect all unique members from all teams
-        const allMembers = new Set();
-        validTeams.forEach(team => {
-          team.members.forEach(member => {
-            if (member.uid !== user.uid) { // Exclude current user
-              allMembers.add(JSON.stringify(member));
-            }
-          });
-        });
-        
-        setTeamMembers(Array.from(allMembers).map(member => JSON.parse(member)));
-      } catch (error) {
-        console.error('Error fetching team members:', error);
-        setError('Failed to load team members. Please try again later.');
-      } finally {
-        setLoadingTeams(false);
-      }
-    };
-
-    if (selectedTab === 'teammates') {
-      fetchTeamMembers();
-    }
-  }, [selectedTab, user]);
-
-  // Handle connect
-  const handleConnect = async (userId) => {
-    try {
-      setActionLoading(true);
-      await connectionService.createConnectionRequest(userId);
-
-      // Remove from suggestions
-      setSuggestions(prevSuggestions =>
-        prevSuggestions.filter(suggestion => suggestion.id !== userId)
-      );
-    } catch (error) {
-      console.error('Failed to send connection request:', error);
-      alert('Failed to send connection request. Please try again.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Handle accept request
-  const handleAcceptRequest = async (requestUid) => {
-    try {
-      setActionLoading(true);
-      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
-      const requestUserRef = doc(db, 'users', requestUid);
-
-      // Get the request to remove
-      const currentUserDoc = await getDoc(currentUserRef);
-      const friendRequests = currentUserDoc.data()?.friendRequests || [];
-      const requestToRemove = friendRequests.find(req => req.uid === requestUid);
-
-      if (requestToRemove) {
-        // Remove the request
-        await updateDoc(currentUserRef, {
-          friendRequests: arrayRemove(requestToRemove),
-          connections: arrayUnion(requestUid)
-        });
-
-        // Add to requester's connections
-        await updateDoc(requestUserRef, {
-          connections: arrayUnion(auth.currentUser.uid)
-        });
-
-        // Update local states
-        setFriendRequests(prev => prev.filter(req => req.uid !== requestUid));
-        
-        // Update global connection count
-        await updateConnectionCount();
-      }
-    } catch (error) {
-      console.error('Failed to accept friend request:', error);
-      alert('Failed to accept friend request. Please try again.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Handle ignore request
-  const handleIgnoreRequest = async (connectionId) => {
-    try {
-      setActionLoading(true);
-      await connectionService.deleteConnection(connectionId);
-
-      // Remove from requests
-      setRequests(prevRequests => prevRequests.filter(request => request.id !== connectionId));
-      setRequestsCount(prevCount => prevCount - 1);
-    } catch (error) {
-      console.error('Failed to ignore connection request:', error);
-      alert('Failed to ignore connection request. Please try again.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Handle remove connection
-  const handleRemoveConnection = async (connectionId) => {
-    try {
-      setActionLoading(true);
-      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
-      const connectionUserRef = doc(db, 'users', connectionId);
-
-      // Remove from both users' connections
-      await updateDoc(currentUserRef, {
-        connections: arrayRemove(connectionId)
-      });
-      await updateDoc(connectionUserRef, {
-        connections: arrayRemove(auth.currentUser.uid)
-      });
-
-      // Update local state
-      setConnections(prev => prev.filter(id => id !== connectionId));
-      
-      // Update global connection count
-      await updateConnectionCount();
-
-    } catch (error) {
-      console.error('Failed to remove connection:', error);
-      alert('Failed to remove connection. Please try again.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Handle tab change
   const handleTabChange = (tab) => {
     setSelectedTab(tab);
   };
 
-  // Teammates
-  const handleSendTeammateInvite = async () => {
-    if (!inviteUserId) return;
-    await teammateService.sendTeammateInvite(inviteUserId);
-    setInviteUserId('');
-    setTeammateInvites(await teammateService.getTeammateInvites());
-  };
-
-  const handleAcceptTeammateInvite = async (inviteId) => {
-    await teammateService.acceptTeammateInvite(inviteId);
-    setTeammateInvites(await teammateService.getTeammateInvites());
-    setTeammates(await teammateService.getTeammates());
-  };
-
-  const handleRejectTeammateInvite = async (inviteId) => {
-    await teammateService.rejectTeammateInvite(inviteId);
-    setTeammateInvites(await teammateService.getTeammateInvites());
-  };
-
-  const handleRemoveTeammate = async (teammateId) => {
-    await teammateService.removeTeammate(teammateId);
-    setTeammates(await teammateService.getTeammates());
-  };
-
-  const handleSendFriendRequest = async (targetUserId) => {
-    try {
-      const targetUserRef = doc(db, 'users', targetUserId);
-      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
-      
-      // Get current user's data
-      const currentUserDoc = await getDoc(currentUserRef);
-      const currentUserData = currentUserDoc.data();
-
-      // Add friend request to target user's friendRequests
-      await updateDoc(targetUserRef, {
-        friendRequests: arrayUnion({
-          uid: auth.currentUser.uid,
-          name: currentUserData.name,
-          profile_image: currentUserData.profile?.profile_image || '/default-avatar.jpg',
-          headline: currentUserData.headline,
-          status: 'pending',
-          timestamp: new Date().toISOString()
-        })
-      });
-
-      // Add to current user's sent requests
-      await updateDoc(currentUserRef, {
-        sentFriendRequests: arrayUnion(targetUserId)
-      });
-
-      // Update local state
-      setUsers(prevUsers =>
-        prevUsers.map(user =>
-          user.id === targetUserId
-            ? { ...user, isRequestSent: true }
-            : user
-        )
-      );
-
-      alert('Friend request sent successfully!');
-    } catch (error) {
-      console.error('Error sending friend request:', error);
-      alert('Failed to send friend request. Please try again.');
-    }
-  };
-
-  const handleCancelRequest = async (targetUserId) => {
-    try {
-      const targetUserRef = doc(db, 'users', targetUserId);
-      const currentUserRef = doc(db, 'users', auth.currentUser.uid);
-
-      // Remove friend request from target user's friendRequests
-      await updateDoc(targetUserRef, {
-        friendRequests: arrayRemove({
-          uid: auth.currentUser.uid,
-          status: 'pending'
-        })
-      });
-
-      // Remove from current user's sent requests
-      await updateDoc(currentUserRef, {
-        sentFriendRequests: arrayRemove(targetUserId)
-      });
-
-      // Update local state
-      setUsers(prevUsers =>
-        prevUsers.map(user =>
-          user.id === targetUserId
-            ? { ...user, isRequestSent: false }
-            : user
-        )
-      );
-
-      alert('Friend request cancelled successfully!');
-    } catch (error) {
-      console.error('Error cancelling friend request:', error);
-      alert('Failed to cancel friend request. Please try again.');
-    }
-  };
-
-  // Handle team creation
-  const handleCreateTeam = async () => {
-    if (!newTeamName) {
-      alert('Please enter a team name');
-      return;
-    }
-    if (selectedConnections.length === 0) {
-      alert('Please select at least one connection for your team');
-      return;
-    }
-
-    try {
-      setIsCreatingTeam(true);
-      await teamService.createTeam({
-        name: newTeamName,
-        description: '',
-        members: selectedConnections
-      });
-      
-      // Reset form
-      setNewTeamName('');
-      setSelectedConnections([]);
-      
-      // Refresh teammates list
-      const updatedTeammates = await teammateService.getTeammates();
-      setTeammates(updatedTeammates);
-      
-      alert('Team created successfully!');
-    } catch (error) {
-      console.error('Error creating team:', error);
-      alert('Failed to create team. Please try again.');
-    } finally {
-      setIsCreatingTeam(false);
-    }
-  };
-
-  const handleConnectionSelect = (connectionId) => {
-    setSelectedConnections(prev => 
-      prev.includes(connectionId)
-        ? prev.filter(id => id !== connectionId)
-        : [...prev, connectionId]
-    );
-  };
-
-  const renderTeammates = () => {
-    if (loadingTeams) {
-      return (
-        <Box display="flex" justifyContent="center" my={4}>
-          <CircularProgress />
-        </Box>
-      );
-    }
-
-    if (teams.length === 0) {
-      return (
-        <Box 
-          display="flex" 
-          flexDirection="column" 
-          alignItems="center" 
-          justifyContent="center" 
-          minHeight="200px"
-          sx={{
-            backgroundColor: 'background.paper',
-            borderRadius: 2,
-            p: 4,
-            textAlign: 'center',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}
-        >
-          <FaUsers size={48} style={{ color: '#9e9e9e', marginBottom: '16px' }} />
-          <Typography variant="h6" color="text.secondary" gutterBottom>
-            You Don't Have Any Teams Yet
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Get started by creating a new team or joining an existing one.
-          </Typography>
-        </Box>
-      );
-    }
-
-    return (
-      <Box sx={{ py: 3 }}>
-        <Typography 
-          variant="h5" 
-          gutterBottom 
-          sx={{ 
-            mb: 4, 
-            fontWeight: 600,
-            position: 'relative',
-            '&:after': {
-              content: '""',
-              position: 'absolute',
-              bottom: '-8px',
-              left: 0,
-              width: '60px',
-              height: '4px',
-              backgroundColor: 'primary.main',
-              borderRadius: '2px'
-            }
-          }}
-        >
-          Your Teams
-        </Typography>
-
-        {teams.map((team) => (
-          <Box key={team.id} sx={{ mb: 6 }}>
-            <Box 
-              sx={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                mb: 3,
-                backgroundColor: 'primary.main',
-                color: 'white',
-                p: 2,
-                borderRadius: '8px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-              }}
-            >
-              <FaUsers size={24} style={{ marginRight: '12px' }} />
-              <Typography variant="h6" sx={{ m: 0 }}>
-                {team.name}
-              </Typography>
-            </Box>
-
-            <Grid container spacing={3}>
-              {team.members
-                .filter(member => member.uid !== user?.uid) // Exclude current user
-                .map((member) => (
-                <Grid item xs={12} sm={6} md={4} key={member.uid}>
-                  <Card 
-                    sx={{ 
-                      height: '100%',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      transition: 'transform 0.2s, box-shadow 0.2s',
-                      '&:hover': {
-                        transform: 'translateY(-4px)',
-                        boxShadow: '0 8px 16px rgba(0,0,0,0.1)'
-                      }
-                    }}
-                  >
-                    <CardContent sx={{ flex: 1, p: 3 }}>
-                      <Box 
-                        display="flex" 
-                        flexDirection="column" 
-                        alignItems="center" 
-                        textAlign="center"
-                      >
-                        <Avatar 
-                          src={member.profile_image || defaultProfileImage} 
-                          sx={{ 
-                            width: 100, 
-                            height: 100, 
-                            mb: 2,
-                            border: '4px solid',
-                            borderColor: 'primary.main'
-                          }}
-                        />
-                        <Typography 
-                          variant="h6" 
-                          sx={{ 
-                            mb: 1,
-                            fontWeight: 600
-                          }}
-                        >
-                          {member.name}
-                        </Typography>
-                        <Typography 
-                          variant="body2" 
-                          color="text.secondary"
-                          sx={{ 
-                            mb: 2,
-                            fontStyle: 'italic'
-                          }}
-                        >
-                          {member.headline || 'Team Member'}
-                        </Typography>
-                        <Box 
-                          sx={{ 
-                            display: 'flex',
-                            alignItems: 'center',
-                            backgroundColor: 'background.paper',
-                            border: '1px solid',
-                            borderColor: 'primary.main',
-                            color: 'primary.main',
-                            py: 0.5,
-                            px: 2,
-                            borderRadius: '20px',
-                            fontSize: '0.875rem'
-                          }}
-                        >
-                          <FaUsers style={{ marginRight: '8px' }} />
-                          {member.role === 'admin' ? 'Team Leader' : 'Team Member'}
-                        </Box>
-                      </Box>
-                    </CardContent>
-                    <Box 
-                      sx={{ 
-                        p: 2, 
-                        borderTop: '1px solid',
-                        borderColor: 'divider',
-                        display: 'flex',
-                        justifyContent: 'center',
-                        gap: 1
-                      }}
-                    >
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<FaLink />}
-                        sx={{ 
-                          borderRadius: '20px',
-                          textTransform: 'none'
-                        }}
-                      >
-                        View Profile
-                      </Button>
-                    </Box>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          </Box>
-        ))}
-      </Box>
-    );
-  };
-
-  const renderContent = () => {
-    switch (selectedTab) {
-      case 'connections':
-        return (
-          <>
-            {/* Existing Connections Section */}
-            <Typography variant="h5" gutterBottom>
-              Your Connections ({connections.length})
-            </Typography>
-            
-            {loading ? (
-              <Box display="flex" justifyContent="center" my={4}>
-                <CircularProgress />
-              </Box>
-            ) : connections.length === 0 ? (
-              <Typography color="text.secondary" align="center" sx={{ my: 4 }}>
-                You don't have any connections yet.
-              </Typography>
-            ) : (
-              <Grid container spacing={3} sx={{ mb: 6 }}>
-                {connections.map((connection) => (
-                  <Grid item xs={12} sm={6} md={4} key={connection}>
-                    <UserCard 
-                      user={users.find(u => u.id === connection) || {
-                        id: connection,
-                        name: "Loading...",
-                        headline: "",
-                        profile: { profile_image: defaultProfileImage }
-                      }}
-                      isConnection={true}
-                      onRemoveConnection={() => handleRemoveConnection(connection)}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-
-            {/* People You May Know Section */}
-            <Typography variant="h5" gutterBottom sx={{ mt: 4 }}>
-              People You May Know
-            </Typography>
-            
-            {loading ? (
-              <Box display="flex" justifyContent="center" my={4}>
-                <CircularProgress />
-              </Box>
-            ) : users.length === 0 ? (
-              <Typography color="text.secondary" align="center" sx={{ my: 4 }}>
-                No suggestions available at the moment.
-              </Typography>
-            ) : (
-              <Grid container spacing={3}>
-                {users.map((user) => (
-                  <Grid item xs={12} sm={6} md={4} key={user.id}>
-                    <UserCard 
-                      user={user}
-                      onSendRequest={() => handleSendFriendRequest(user.id)}
-                      onCancelRequest={() => handleCancelRequest(user.id)}
-                      isRequestSent={user.isRequestSent}
-                    />
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-          </>
-        );
-
-      case 'invitations':
-        return (
-          <Box mb={4}>
-            <Typography variant="h5" gutterBottom>
-              Friend Requests ({friendRequests.length})
-            </Typography>
-            <FriendRequests requests={friendRequests} />
-          </Box>
-        );
-
-      case 'teammates':
-        return (
-          <Box>
-            {renderTeammates()}
-            {/* Team Creation Form */}
-            <Card sx={{ mb: 4, p: 2 }}>
-              <Typography variant="h6" gutterBottom>
-                Create New Team
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                <TextField
-                  fullWidth
-                  label="Team Name"
-                  value={newTeamName}
-                  onChange={(e) => setNewTeamName(e.target.value)}
-                  sx={{ mb: 2 }}
-                />
-                <Typography variant="subtitle1" gutterBottom>
-                  Select Team Members:
-                </Typography>
-                <Grid container spacing={2}>
-                  {connections.map((connectionId) => {
-                    const connection = users.find(u => u.id === connectionId);
-                    if (!connection) return null;
-                    
-                    return (
-                      <Grid item xs={12} sm={6} md={4} key={connectionId}>
-                        <Card 
-                          sx={{ 
-                            border: selectedConnections.includes(connectionId) ? 2 : 0,
-                            borderColor: 'primary.main',
-                            cursor: 'pointer'
-                          }}
-                          onClick={() => handleConnectionSelect(connectionId)}
-                        >
-                          <CardContent>
-                            <Box display="flex" alignItems="center">
-                              <Avatar 
-                                src={connection.profile?.profile_image || defaultProfileImage} 
-                                sx={{ mr: 2 }}
-                              />
-                              <Box>
-                                <Typography variant="subtitle1">
-                                  {connection.name}
-                                </Typography>
-                                <Typography variant="body2" color="textSecondary">
-                                  {connection.headline}
-                                </Typography>
-                              </Box>
-                            </Box>
-                          </CardContent>
-                        </Card>
-                      </Grid>
-                    );
-                  })}
-                </Grid>
-              </Box>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleCreateTeam}
-                disabled={isCreatingTeam || !newTeamName || selectedConnections.length === 0}
-                sx={{ mt: 2 }}
-              >
-                {isCreatingTeam ? <CircularProgress size={24} /> : 'Create Team'}
-              </Button>
-            </Card>
-
-            <Box mt={4}>
-              <Typography variant="h5" gutterBottom>
-                Teammate Invites
-              </Typography>
-              {teammateInvites.map((invite) => (
-                <Card key={invite.id} sx={{ mb: 2 }}>
-                  <CardContent>
-                    <Box display="flex" justifyContent="space-between" alignItems="center">
-                      <Box>
-                        <Typography variant="h6">{invite.name}</Typography>
-                        <Typography variant="body2" color="textSecondary">
-                          {invite.role}
-                        </Typography>
-                      </Box>
-                      <Box>
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => handleAcceptTeammateInvite(invite.id)}
-                          sx={{ mr: 1 }}
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          variant="outlined"
-                          color="error"
-                          onClick={() => handleRejectTeammateInvite(invite.id)}
-                        >
-                          Reject
-                        </Button>
-                      </Box>
-                    </Box>
-                  </CardContent>
-                </Card>
-              ))}
-            </Box>
-          </Box>
-        );
-
-      default:
-        return null;
-    }
-  };
-
   return (
-    <div className="network-modern-layout">
-      <aside className="network-modern-sidebar">
-        <ul className="network-modern-links">
-          <li 
-            className={selectedTab === 'connections' ? 'active' : ''} 
-            onClick={() => setSelectedTab('connections')}
-          >
-            <FaLink /> Connections <span>{connections.length}</span>
-          </li>
-          <li 
-            className={selectedTab === 'invitations' ? 'active' : ''} 
-            onClick={() => setSelectedTab('invitations')}
-          >
-            <FaBell /> Invitations <span>{friendRequests.length}</span>
-          </li>
-          <li 
-            className={selectedTab === 'teammates' ? 'active' : ''} 
-            onClick={() => setSelectedTab('teammates')}
-          >
-            <FaUsers /> Teammates
-          </li>
-        </ul>
-      </aside>
-      
-      <section className="network-modern-content">
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
-          {renderContent()}
-        </Container>
-      </section>
+    <div className="network-page">
+      <div className="network-sidebar">
+        <div className="sidebar-section">
+          <h2 className="sidebar-title">Manage my network</h2>
+          <ul className="sidebar-links">
+            <li>
+              <button
+                className={`sidebar-link ${selectedTab === 'connections' ? 'active' : ''}`}
+                onClick={() => handleTabChange('connections')}
+              >
+                <span className="link-icon">👥</span>
+                <span className="link-text">Connections</span>
+              </button>
+            </li>
+            <li>
+              <button
+                className={`sidebar-link ${selectedTab === 'requests' ? 'active' : ''}`}
+                onClick={() => handleTabChange('requests')}
+              >
+                <span className="link-icon">📩</span>
+                <span className="link-text">Invitations</span>
+              </button>
+            </li>
+            <li>
+              <button
+                className={`sidebar-link ${selectedTab === 'contacts' ? 'active' : ''}`}
+                onClick={() => handleTabChange('contacts')}
+              >
+                <span className="link-icon">📇</span>
+                <span className="link-text">Contacts</span>
+              </button>
+            </li>
+            <li>
+              <button
+                className={`sidebar-link ${selectedTab === 'following' ? 'active' : ''}`}
+                onClick={() => handleTabChange('following')}
+              >
+                <span className="link-icon">👁️</span>
+                <span className="link-text">Following & Followers</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="network-content">
+        {selectedTab === 'connections' && (
+          <div className="connections-tab">
+            <h1 className="page-title">Connections</h1>
+            <ConnectionList showViewAll={false} limit={20} />
+          </div>
+        )}
+
+        {selectedTab === 'requests' && (
+          <div className="requests-tab">
+            <h1 className="page-title">Invitations</h1>
+            <ConnectionRequests showViewAll={false} limit={20} />
+          </div>
+        )}
+
+        {selectedTab === 'contacts' && (
+          <div className="contacts-tab">
+            <h1 className="page-title">Contacts</h1>
+            <div className="empty-state">
+              <h3>No contacts yet</h3>
+              <p>Import your email contacts to find people you know on LinkedOut.</p>
+              <button className="import-contacts-btn">Import Contacts</button>
+            </div>
+          </div>
+        )}
+
+        {selectedTab === 'following' && (
+          <div className="following-tab">
+            <h1 className="page-title">Following & Followers</h1>
+            <div className="empty-state">
+              <h3>No following or followers yet</h3>
+              <p>Follow people to get updates on their posts and activities.</p>
+            </div>
+          </div>
+        )}
+
+        {/* Connection Suggestions Section (always visible) */}
+        <div className="suggestions-section">
+          <ConnectionSuggestions />
+        </div>
+      </div>
     </div>
   );
 };

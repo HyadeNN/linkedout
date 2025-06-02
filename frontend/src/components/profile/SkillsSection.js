@@ -1,102 +1,189 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
-import { db } from '../../firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import './SkillsSection.css';
+import React, { useState } from 'react';
+import { profileService } from '../../services';
 
-const SkillsSection = () => {
-  const { currentUser } = useAuth();
-  const [skills, setSkills] = useState([]);
-  const [isEditing, setIsEditing] = useState(false);
+const SkillsSection = ({
+  skills = [],
+  isEditable = false,
+  canEndorse = false,
+  onUpdate = () => {}
+}) => {
   const [newSkill, setNewSkill] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [isAdding, setIsAdding] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [endorsingSkillId, setEndorsingSkillId] = useState(null);
 
-  useEffect(() => {
-    const fetchSkills = async () => {
-      if (currentUser) {
-        const docRef = doc(db, 'users', currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setSkills(docSnap.data().skills || []);
-        }
-        setLoading(false);
-      }
-    };
-    fetchSkills();
-  }, [currentUser]);
+  const handleAddClick = () => {
+    setIsAdding(true);
+  };
 
-  const handleAddSkill = async () => {
-    if (!newSkill.trim()) return;
-
-    const updatedSkills = [...skills, { id: Date.now(), name: newSkill.trim() }];
-    setSkills(updatedSkills);
-    await updateDoc(doc(db, 'users', currentUser.uid), {
-      skills: updatedSkills
-    });
+  const handleCancelAdd = () => {
+    setIsAdding(false);
     setNewSkill('');
-    setIsEditing(false);
+  };
+
+  const handleNewSkillChange = (e) => {
+    setNewSkill(e.target.value);
+  };
+
+  const handleAddSkill = async (e) => {
+    e.preventDefault();
+
+    if (!newSkill.trim()) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await profileService.createSkill({ name: newSkill.trim() });
+      setNewSkill('');
+      setIsAdding(false);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to add skill:', error);
+      if (error.response && error.response.data && error.response.data.detail === 'Skill already exists for this profile') {
+        alert('This skill is already in your profile.');
+      } else {
+        alert('Failed to add skill. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDeleteSkill = async (skillId) => {
-    const updatedSkills = skills.filter(skill => skill.id !== skillId);
-    setSkills(updatedSkills);
-    await updateDoc(doc(db, 'users', currentUser.uid), {
-      skills: updatedSkills
-    });
+    if (!window.confirm('Are you sure you want to delete this skill?')) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await profileService.deleteSkill(skillId);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to delete skill:', error);
+      alert('Failed to delete skill. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) {
-    return <div className="skills-section-loading">Loading...</div>;
-  }
+  const handleEndorseSkill = async (skillId) => {
+    try {
+      setEndorsingSkillId(skillId);
+      await profileService.endorseSkill(skillId);
+      onUpdate();
+    } catch (error) {
+      console.error('Failed to endorse skill:', error);
+      if (error.response && error.response.data && error.response.data.detail === 'Skill already endorsed by this user') {
+        alert('You have already endorsed this skill.');
+      } else if (error.response && error.response.data && error.response.data.detail === 'Cannot endorse your own skill') {
+        alert('You cannot endorse your own skill.');
+      } else {
+        alert('Failed to endorse skill. Please try again.');
+      }
+    } finally {
+      setEndorsingSkillId(null);
+    }
+  };
 
   return (
     <div className="skills-section">
       <div className="section-header">
-        <h2>Skills</h2>
-        {!isEditing && (
-          <button className="add-button" onClick={() => setIsEditing(true)}>
-            Add Skills
+        <h2 className="section-title">Skills</h2>
+        {isEditable && !isAdding && (
+          <button
+            className="add-item-btn"
+            onClick={handleAddClick}
+            disabled={loading}
+          >
+            <span className="add-icon">+</span>
           </button>
         )}
       </div>
 
-      {isEditing && (
-        <div className="skills-form">
-          <input
-            type="text"
-            placeholder="Add a skill"
-            value={newSkill}
-            onChange={(e) => setNewSkill(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter') {
-                handleAddSkill();
-              }
-            }}
-          />
+      {isAdding && (
+        <form onSubmit={handleAddSkill} className="add-skill-form">
+          <div className="form-group">
+            <input
+              type="text"
+              value={newSkill}
+              onChange={handleNewSkillChange}
+              placeholder="Add a skill"
+              disabled={loading}
+              autoFocus
+            />
+          </div>
           <div className="form-actions">
-            <button className="save-button" onClick={handleAddSkill}>
-              Save
-            </button>
-            <button className="cancel-button" onClick={() => setIsEditing(false)}>
+            <button
+              type="button"
+              className="cancel-btn"
+              onClick={handleCancelAdd}
+              disabled={loading}
+            >
               Cancel
             </button>
-          </div>
-        </div>
-      )}
-
-      <div className="skills-list">
-        {skills.map((skill) => (
-          <div key={skill.id} className="skill-item">
-            <span className="skill-name">{skill.name}</span>
             <button
-              className="delete-button"
-              onClick={() => handleDeleteSkill(skill.id)}
+              type="submit"
+              className="save-btn"
+              disabled={loading || !newSkill.trim()}
             >
-              Delete
+              {loading ? 'Adding...' : 'Add'}
             </button>
           </div>
-        ))}
-      </div>
+        </form>
+      )}
+
+      {skills.length === 0 && !isAdding ? (
+        <div className="empty-section">
+          <p>Add your skills</p>
+          {isEditable && (
+            <button
+              className="add-skill-btn"
+              onClick={handleAddClick}
+              disabled={loading}
+            >
+              Add skill
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="skills-list">
+          {skills.map(skill => (
+            <div key={skill.id} className="skill-item">
+              <div className="skill-info">
+                <span className="skill-name">{skill.name}</span>
+                {skill.endorsement_count > 0 && (
+                  <span className="endorsement-count">
+                    {skill.endorsement_count} endorsement{skill.endorsement_count !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+
+              <div className="skill-actions">
+                {canEndorse && (
+                  <button
+                    className="endorse-btn"
+                    onClick={() => handleEndorseSkill(skill.id)}
+                    disabled={endorsingSkillId === skill.id}
+                  >
+                    {endorsingSkillId === skill.id ? 'Endorsing...' : 'Endorse'}
+                  </button>
+                )}
+
+                {isEditable && (
+                  <button
+                    className="delete-item-btn"
+                    onClick={() => handleDeleteSkill(skill.id)}
+                    disabled={loading}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
